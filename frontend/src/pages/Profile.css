@@ -1,0 +1,362 @@
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-xl) 0 var(--space-section) 0;
+  text-align: left;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: var(--space-lg);
+}
+
+.profile-header-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-header h1 {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+.profile-tagline {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-body);
+  margin-top: var(--space-xs);
+}
+
+.profile-bio {
+  font-size: 14px;
+  color: var(--text-body);
+  max-width: 640px;
+  line-height: 1.6;
+}
+
+.edit-profile-btn {
+  flex-shrink: 0;
+}
+
+.sync-note {
+  font-size: 13px;
+  color: var(--text-mute);
+  margin-top: var(--space-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sync-note::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--success);
+  border-radius: 50%;
+}
+
+.sync-note.stale::before {
+  background-color: var(--warning);
+}
+
+/* Handle Onboarding Form - Terminal style block */
+.onboarding-form {
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--rounded-sm);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.onboarding-form-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: var(--space-xs);
+}
+
+.form-inputs-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.input-wrapper {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.input-wrapper label {
+  font-size: 13px;
+  color: var(--text-mute);
+  font-weight: 500;
+}
+
+.input-wrapper input {
+  width: 100%;
+}
+
+.form-inputs-group button {
+  flex: 0 0 auto;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field-group label {
+  font-size: 13px;
+  color: var(--text-mute);
+  font-weight: 500;
+}
+
+.field-group .textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.char-count {
+  font-size: 12px;
+  color: var(--text-ash);
+  align-self: flex-end;
+}
+
+.links-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.links-editor-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.links-editor-row .text-input:first-child {
+  flex: 0 0 160px;
+}
+
+.links-editor-row .text-input:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.links-editor-remove {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--text-mute);
+  border-radius: var(--rounded-sm);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.links-editor-remove:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.links-editor-add {
+  align-self: flex-start;
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.form-status-msg {
+  font-size: 13px;
+  margin-top: var(--space-xs);
+}
+
+.form-status-msg.saved {
+  color: var(--success);
+}
+
+.form-status-msg.error {
+  color: var(--danger);
+}
+
+/* Activity Summary Details */
+.activity-summary-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.activity-total {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  /* Profile Header - Grid Layout to keep avatar & name next to each other */
+  .profile-header {
+    display: grid !important;
+    grid-template-columns: 56px 1fr;
+    grid-template-areas:
+      "avatar info"
+      "edit edit";
+    gap: var(--space-md);
+    align-items: center;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: var(--space-lg);
+    text-align: left;
+  }
+  
+  .profile-header .avatar {
+    grid-area: avatar;
+    margin: 0;
+  }
+
+  .profile-header .profile-header-text {
+    grid-area: info;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .profile-header h1 {
+    font-size: 22px !important;
+    line-height: 1.2;
+  }
+
+  .profile-tagline {
+    font-size: 13px;
+    margin-top: 2px;
+  }
+
+  .profile-header .edit-profile-btn {
+    grid-area: edit;
+    width: 100%;
+    align-self: stretch;
+    justify-content: center;
+    margin-top: var(--space-xs);
+  }
+
+  .form-inputs-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .input-wrapper {
+    flex: none;
+    width: 100%;
+  }
+  
+  .form-inputs-group button {
+    align-self: stretch !important;
+    width: 100%;
+  }
+  
+  /* Link editor row styling */
+  .links-editor-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label remove"
+      "url remove";
+    gap: var(--space-xs);
+    width: 100%;
+  }
+  
+  .links-editor-row .text-input:first-child {
+    grid-area: label;
+    flex: none;
+    width: 100%;
+  }
+  
+  .links-editor-row .text-input:last-child {
+    grid-area: url;
+    flex: none;
+    width: 100%;
+  }
+  
+  .links-editor-remove {
+    grid-area: remove;
+    align-self: center;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+
+  /* Controls Row - side-by-side with horizontal scroll for platforms */
+  .controls-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    width: 100%;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .controls-row .platform-toggle {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    display: flex;
+    white-space: nowrap;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .controls-row .platform-toggle::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  .controls-row .year-selector {
+    flex-shrink: 0;
+  }
+
+  .activity-summary-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+  }
+}
+
+.activity-hint {
+  font-size: 13px;
+  color: var(--text-mute);
+}
+
+.controls-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.controls-row .platform-toggle {
+  margin-bottom: 0;
+}
+
+

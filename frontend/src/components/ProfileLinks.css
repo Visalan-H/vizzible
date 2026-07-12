@@ -1,0 +1,32 @@
+.profile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.profile-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--rounded-full);
+  color: var(--ink);
+  background: var(--surface-soft);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s ease, transform 160ms var(--ease-out);
+}
+
+.profile-link-chip:hover {
+  background: var(--surface-card);
+}
+
+.profile-link-chip:active {
+  transform: scale(0.97);
+}
+
+.profile-link-chip svg {
+  flex-shrink: 0;
+}

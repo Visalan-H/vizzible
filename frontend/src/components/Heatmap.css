@@ -1,0 +1,37 @@
+/* Custom monospaced styles for the calendar heatmap */
+
+.react-calendar-heatmap text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--text-mute);
+}
+
+.react-calendar-heatmap rect {
+  rx: 2px; /* Slight rounded corners on each day cell */
+  ry: 2px;
+  cursor: pointer;
+  transition: transform 0.1s ease, stroke-width 0.1s ease;
+}
+
+.react-calendar-heatmap rect:hover {
+  stroke: var(--ink);
+  stroke-width: 0.5px;
+}
+
+/* Base scale opacity overrides if not using the dynamic inline fill */
+.react-calendar-heatmap .color-empty {
+  fill: var(--surface-card);
+}
+
+.heatmap-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: var(--space-md);
+  /* smooth scrolling for iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
+.heatmap-scroll-inner {
+  min-width: 760px; /* forces horizontal scroll instead of shrinking */
+}
