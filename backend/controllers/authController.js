@@ -83,7 +83,7 @@ async function handleGithubCallback(req, res) {
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 
-  res.redirect(`${process.env.CLIENT_URL}/u/${user.githubUsername}`);
+  res.redirect(`${process.env.CLIENT_URL}/${user.githubUsername}`);
 }
 
 async function getCurrentUser(req, res) {

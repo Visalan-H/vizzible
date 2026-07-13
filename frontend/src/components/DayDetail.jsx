@@ -21,16 +21,17 @@ function pluralize(count, word) {
 export default function DayDetail({ day, platform, onClose }) {
   const lines =
     platform === 'combined'
-      ? Object.keys(PLATFORM_LABELS)
-          .filter((p) => day[p] > 0)
-          .map((p) => `${pluralize(day[p], PLATFORM_UNITS[p])} on ${PLATFORM_LABELS[p]}`)
+      ? Object.keys(PLATFORM_LABELS).reduce((acc, p) => {
+          if (day[p] > 0) acc.push(`${pluralize(day[p], PLATFORM_UNITS[p])} on ${PLATFORM_LABELS[p]}`);
+          return acc;
+        }, [])
       : day[platform] > 0
         ? [`${pluralize(day[platform], PLATFORM_UNITS[platform])} on ${PLATFORM_LABELS[platform]}`]
         : [];
 
   return (
     <div className="day-detail">
-      <button className="day-detail-close" onClick={onClose} aria-label="Close">
+      <button type="button" className="day-detail-close" onClick={onClose} aria-label="Close">
         ×
       </button>
       <p className="day-detail-date">{formatDate(day.date)}</p>

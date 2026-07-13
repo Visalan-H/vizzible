@@ -13,10 +13,24 @@ function isStale(user) {
 async function saveActivity(userId, platform, days) {
   if (days.length === 0) return;
 
-  const operations = days.map(({ date, count }) => ({
+  // Group the flat {date, count}[] this connector returned into one bucket
+  // per year, then upsert each year as a single document - $set only the
+  // specific 'MM-DD' map keys that changed, leaving any other days already
+  // stored for that year untouched.
+  const byYear = new Map();
+  for (const { date, count } of days) {
+    const year = Number(date.slice(0, 4));
+    const monthDay = date.slice(5); // 'MM-DD'
+    if (!byYear.has(year)) byYear.set(year, {});
+    byYear.get(year)[monthDay] = count;
+  }
+
+  const operations = [...byYear.entries()].map(([year, counts]) => ({
     updateOne: {
-      filter: { userId, platform, date },
-      update: { $set: { count } },
+      filter: { userId, platform, year },
+      update: {
+        $set: Object.fromEntries(Object.entries(counts).map(([monthDay, count]) => [`counts.${monthDay}`, count])),
+      },
       upsert: true,
     },
   }));

@@ -1,7 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-require('dotenv').config();
+const rateLimit = require('express-rate-limit');
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'development' ? '.env.local' : '.env'
+});
 
 const { connectDB } = require('./config/db');
 const authRoutes = require('./routes/auth');
@@ -10,9 +14,21 @@ const profileRoutes = require('./routes/profiles');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
+app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+
+// Generic API-wide ceiling against abusive traffic. Individual routes
+// (OAuth start, profile writes) get tighter limits in their own routers.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(apiLimiter);
 
 // Ensures the DB connection is ready before any route runs. Cheap on warm
 // invocations since connectDB() caches the connection promise.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import client from '../api/client';
 
 // One request gets profile meta and one gets the full per-day, per-platform
@@ -10,9 +10,19 @@ export function useProfile(username) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  const fetchActivity = useCallback(() => {
+    if (!username) return Promise.resolve();
+    return client.get(`/api/profiles/${username}/activity`)
+      .then(res => {
+        setActivity(res.data.activity);
+        return res.data;
+      });
+  }, [username]);
+
   useEffect(() => {
     if (!username) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setNotFound(false);
 
@@ -30,5 +40,5 @@ export function useProfile(username) {
       .finally(() => setLoading(false));
   }, [username]);
 
-  return { profile, activity, loading, notFound, setProfile };
+  return { profile, activity, loading, notFound, setProfile, fetchActivity };
 }

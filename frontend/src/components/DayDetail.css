@@ -4,7 +4,6 @@
   border: 1px solid var(--hairline-strong);
   border-radius: var(--rounded-sm);
   padding: var(--space-lg);
-  max-width: 320px;
 }
 
 .day-detail-close {
@@ -31,7 +30,7 @@
   padding-right: var(--space-lg);
 }
 
-.day-detail-list {
+.day-detail-list {  
   list-style: none;
   display: flex;
   flex-direction: column;

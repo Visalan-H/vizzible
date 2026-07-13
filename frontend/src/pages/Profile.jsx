@@ -3,10 +3,10 @@ import { useParams } from 'react-router-dom';
 import client from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
+import { useHoverCapable } from '../hooks/useHoverCapable';
 import PlatformToggle from '../components/PlatformToggle';
 import YearSelector from '../components/YearSelector';
-import Heatmap from '../components/Heatmap';
-import DayDetail from '../components/DayDetail';
+import ActivityBoard from '../components/ActivityBoard';
 import ProfileLinks from '../components/ProfileLinks';
 import './Profile.css';
 
@@ -22,24 +22,15 @@ const PLATFORM_KEY = { combined: 'total', github: 'github', codeforces: 'codefor
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_LINKS = 10;
 
-function timeAgo(dateStr) {
-  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-// The backend only stores rows for days that had activity. Filling in every
-// day of the selected year (Jan 1 through Dec 31, or today if it's the
-// current year) means every cell is clickable and shows a proper
-// "no activity" detail, instead of react-calendar-heatmap handing back a
-// null value for gaps.
+// The backend only stores rows for days that had activity. Filling in
+// every day of Jan 1 - Dec 31 for the selected year (even for the current,
+// still-in-progress year - future days just render empty) means every
+// cell is clickable, the grid shape is consistent across years, and
+// month-highlighting/stats have a full, evenly-spaced year to work with.
 function buildDenseValues(activity, platformKey, year) {
   const byDate = new Map(activity.map((day) => [day.date, day]));
   const start = new Date(Date.UTC(year, 0, 1));
-  const end = year === CURRENT_YEAR ? new Date() : new Date(Date.UTC(year, 11, 31));
+  const end = new Date(Date.UTC(year, 11, 31));
 
   const days = [];
   for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
@@ -54,12 +45,18 @@ function buildDenseValues(activity, platformKey, year) {
 // already exist rather than stored separately - one less thing to edit or
 // go stale relative to the actual handle.
 function buildPlatformLinks(profile) {
-  const links = [{ label: 'GitHub', url: `https://github.com/${profile.githubUsername}` }];
+  const links = [{ label: 'GitHub', url: `https://github.com/${encodeURIComponent(profile.githubUsername)}` }];
   if (profile.codeforcesHandle) {
-    links.push({ label: 'Codeforces', url: `https://codeforces.com/profile/${profile.codeforcesHandle}` });
+    links.push({
+      label: 'Codeforces',
+      url: `https://codeforces.com/profile/${encodeURIComponent(profile.codeforcesHandle)}`,
+    });
   }
   if (profile.leetcodeUsername) {
-    links.push({ label: 'LeetCode', url: `https://leetcode.com/u/${profile.leetcodeUsername}/` });
+    links.push({
+      label: 'LeetCode',
+      url: `https://leetcode.com/u/${encodeURIComponent(profile.leetcodeUsername)}/`,
+    });
   }
   return links;
 }
@@ -67,11 +64,13 @@ function buildPlatformLinks(profile) {
 export default function Profile() {
   const { username } = useParams();
   const { user: currentUser } = useAuth();
-  const { profile, activity, loading, notFound, setProfile } = useProfile(username);
+  const { profile, activity, loading, notFound, setProfile, fetchActivity } = useProfile(username);
+  const hoverCapable = useHoverCapable();
   const [platform, setPlatform] = useState('combined');
   const [year, setYear] = useState(CURRENT_YEAR);
-  const [selectedDay, setSelectedDay] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [syncingData, setSyncingData] = useState(false);
 
   const availableYears = useMemo(() => {
     const years = new Set(activity?.map((day) => Number(day.date.slice(0, 4))));
@@ -84,25 +83,37 @@ export default function Profile() {
     [activity, platform, year]
   );
 
+  // Memoized so identity is stable across renders that don't touch year -
+  // `new Date(...)` inline in the render body would otherwise hand Heatmap
+  // a "new" prop on every render, defeating its memo for no reason.
+  const yearBounds = useMemo(
+    () => ({ start: new Date(Date.UTC(year, 0, 1)), end: new Date(Date.UTC(year, 11, 31)) }),
+    [year]
+  );
+
+  const allLinks = useMemo(
+    () => [...buildPlatformLinks(profile ?? {}), ...(profile?.links || [])],
+    [profile]
+  );
+
   if (loading) return <p className="state-msg">Loading...</p>;
   if (notFound) return <p className="state-msg">No profile at {username}.</p>;
   if (!profile) return null;
 
   const isOwnProfile = currentUser?.githubUsername === profile.githubUsername;
-  const isStale = !profile.lastSyncedAt || Date.now() - new Date(profile.lastSyncedAt).getTime() > 24 * 60 * 60 * 1000;
+  const handlesMissing = !profile.codeforcesHandle || !profile.leetcodeUsername;
+  const showForm = editing || (isOwnProfile && handlesMissing && !onboardingDismissed);
   const total = values.reduce((sum, v) => sum + v.count, 0);
-  const yearStart = new Date(Date.UTC(year, 0, 1));
-  const yearEnd = year === CURRENT_YEAR ? new Date() : new Date(Date.UTC(year, 11, 31));
-  const allLinks = [...buildPlatformLinks(profile), ...(profile.links || [])];
 
+  // No manual "clear selectedDay/selectedMonth" needed here anymore - that
+  // state now lives inside ActivityBoard, keyed below by platform+year, so
+  // switching either just remounts it with a clean slate.
   function handlePlatformChange(next) {
     setPlatform(next);
-    setSelectedDay(null); // stale detail from a different tab would be confusing
   }
 
   function handleYearChange(next) {
     setYear(next);
-    setSelectedDay(null);
   }
 
   return (
@@ -119,8 +130,8 @@ export default function Profile() {
           <h1>{profile.githubUsername}</h1>
           {profile.tagline && <p className="profile-tagline">{profile.tagline}</p>}
         </div>
-        {isOwnProfile && !editing && (
-          <button className="btn-secondary edit-profile-btn" onClick={() => setEditing(true)}>
+        {isOwnProfile && !showForm && (
+          <button type="button" className="btn-secondary edit-profile-btn" onClick={() => setEditing(true)}>
             Edit profile
           </button>
         )}
@@ -130,14 +141,45 @@ export default function Profile() {
 
       <ProfileLinks links={allLinks} />
 
-      {isOwnProfile && editing && (
+      {syncingData && (
+        <div className="syncing-banner" style={{
+          backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', 
+          padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', 
+          color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center'
+        }}>
+          Fetching your latest Codeforces and LeetCode activity...
+        </div>
+      )}
+
+      {isOwnProfile && showForm && (
         <EditProfileForm
           profile={profile}
-          onSaved={(updated) => {
+          onboarding={!editing && handlesMissing}
+          onSaved={(updated, handlesChanged) => {
+            const oldLastSyncedAt = profile.lastSyncedAt;
             setProfile((prev) => ({ ...prev, ...updated }));
             setEditing(false);
+            setOnboardingDismissed(true);
+            
+            if (handlesChanged) {
+              setSyncingData(true);
+              let attempts = 0;
+              const pollId = setInterval(() => {
+                attempts++;
+                fetchActivity().then((data) => {
+                  // Stop polling if we see a new sync timestamp or hit max attempts
+                  if (data?.lastSyncedAt !== oldLastSyncedAt || attempts >= 4) {
+                    clearInterval(pollId);
+                    setSyncingData(false);
+                  }
+                });
+              }, 2500);
+            }
           }}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            setEditing(false);
+            setOnboardingDismissed(true);
+          }}
         />
       )}
 
@@ -150,20 +192,20 @@ export default function Profile() {
         <p className="activity-total">
           {total} activity {total === 1 ? 'point' : 'points'} in {year}
         </p>
-        <p className="activity-hint">Click a day to see what happened</p>
+        <p className="activity-hint">
+          Click a month label to see stats · {hoverCapable ? 'hover' : 'tap'} a day for details
+        </p>
       </div>
 
-      <Heatmap
+      <ActivityBoard
+        key={`${platform}-${year}`}
         values={values}
         color={PLATFORM_COLOR[platform]}
-        onDayClick={setSelectedDay}
-        startDate={yearStart}
-        endDate={yearEnd}
+        startDate={yearBounds.start}
+        endDate={yearBounds.end}
+        year={year}
+        platform={platform}
       />
-
-      {selectedDay && (
-        <DayDetail day={selectedDay} platform={platform} onClose={() => setSelectedDay(null)} />
-      )}
     </section>
   );
 }
@@ -174,7 +216,7 @@ function normalizeUrl(raw) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-function EditProfileForm({ profile, onSaved, onCancel }) {
+function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
   const [codeforcesHandle, setCodeforcesHandle] = useState(profile.codeforcesHandle || '');
   const [leetcodeUsername, setLeetcodeUsername] = useState(profile.leetcodeUsername || '');
   const [tagline, setTagline] = useState(profile.tagline || '');
@@ -201,9 +243,11 @@ function EditProfileForm({ profile, onSaved, onCancel }) {
     setSaving(true);
     setStatus(null);
 
-    const cleanedLinks = links
-      .map((link) => ({ label: link.label.trim(), url: normalizeUrl(link.url) }))
-      .filter((link) => link.label && link.url);
+    const cleanedLinks = links.reduce((acc, link) => {
+      const cleaned = { label: link.label.trim(), url: normalizeUrl(link.url) };
+      if (cleaned.label && cleaned.url) acc.push(cleaned);
+      return acc;
+    }, []);
 
     const nextCodeforces = codeforcesHandle.trim() || null;
     const nextLeetcode = leetcodeUsername.trim() || null;
@@ -220,7 +264,7 @@ function EditProfileForm({ profile, onSaved, onCancel }) {
       })
       .then((res) => {
         setStatus(handlesChanged ? 'saved-resync' : 'saved');
-        onSaved(res.data);
+        onSaved(res.data, handlesChanged);
       })
       .catch(() => setStatus('error'))
       .finally(() => setSaving(false));
@@ -228,7 +272,9 @@ function EditProfileForm({ profile, onSaved, onCancel }) {
 
   return (
     <form className="onboarding-form" onSubmit={handleSubmit}>
-      <div className="onboarding-form-title">Edit profile</div>
+      <div className="onboarding-form-title">
+        {onboarding ? 'Add your Codeforces and LeetCode handles' : 'Edit profile'}
+      </div>
 
       <div className="field-group">
         <label htmlFor="tagline">Tagline</label>
@@ -258,18 +304,26 @@ function EditProfileForm({ profile, onSaved, onCancel }) {
       </div>
 
       <div className="form-inputs-group">
-        <input
-          className="text-input"
-          placeholder="Codeforces handle"
-          value={codeforcesHandle}
-          onChange={(e) => setCodeforcesHandle(e.target.value)}
-        />
-        <input
-          className="text-input"
-          placeholder="LeetCode username"
-          value={leetcodeUsername}
-          onChange={(e) => setLeetcodeUsername(e.target.value)}
-        />
+        <div className="input-wrapper">
+          <label htmlFor="codeforcesHandle">Codeforces handle</label>
+          <input
+            id="codeforcesHandle"
+            className="text-input"
+            placeholder="e.g. tourist"
+            value={codeforcesHandle}
+            onChange={(e) => setCodeforcesHandle(e.target.value)}
+          />
+        </div>
+        <div className="input-wrapper">
+          <label htmlFor="leetcodeUsername">LeetCode username</label>
+          <input
+            id="leetcodeUsername"
+            className="text-input"
+            placeholder="e.g. neal_wu"
+            value={leetcodeUsername}
+            onChange={(e) => setLeetcodeUsername(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="field-group">
@@ -312,7 +366,7 @@ function EditProfileForm({ profile, onSaved, onCancel }) {
           {saving ? 'Saving...' : 'Save'}
         </button>
         <button type="button" className="btn-ghost" onClick={onCancel}>
-          Cancel
+          {onboarding ? 'Skip for now' : 'Cancel'}
         </button>
       </div>
 

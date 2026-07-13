@@ -41,8 +41,20 @@ const linkSchema = z.object({
 });
 
 const profileUpdateSchema = z.object({
-  codeforcesHandle: z.string().trim().min(1).max(39).nullable(),
-  leetcodeUsername: z.string().trim().min(1).max(39).nullable(),
+  codeforcesHandle: z
+    .string()
+    .trim()
+    .min(1)
+    .max(39)
+    .regex(/^[A-Za-z0-9_.-]+$/, 'Only letters, numbers, underscores, dots, and hyphens allowed')
+    .nullable(),
+  leetcodeUsername: z
+    .string()
+    .trim()
+    .min(1)
+    .max(39)
+    .regex(/^[A-Za-z0-9_.-]+$/, 'Only letters, numbers, underscores, dots, and hyphens allowed')
+    .nullable(),
   tagline: z.string().trim().max(120).nullable(),
   bio: z.string().trim().max(500).nullable(),
   links: z.array(linkSchema).max(10),
@@ -105,22 +117,24 @@ async function getActivity(req, res) {
   const user = await User.findOne({ githubUsername: req.params.username });
   if (!user) return res.status(404).json({ error: 'Profile not found' });
 
-  // One aggregation returns every platform's count per day, instead of the
-  // frontend making 4 separate requests (one per tab) that each re-ran their
-  // own query and independently triggered a staleness check. This shape is
-  // also exactly what the day-detail popup needs - no separate endpoint for it.
-  const rows = await DailyActivity.aggregate([
-    { $match: { userId: user._id } },
-    { $group: { _id: '$date', platforms: { $push: { platform: '$platform', count: '$count' } } } },
-    { $sort: { _id: 1 } },
-  ]);
+  // At most a few documents per user now (one per platform per year they've
+  // been active), so a plain find + in-memory flatten replaces what used to
+  // be a $group aggregation over hundreds/thousands of per-day rows.
+  const rows = await DailyActivity.find({ userId: user._id }).lean();
 
-  const activity = rows.map((row) => {
-    const byPlatform = { github: 0, codeforces: 0, leetcode: 0 };
-    for (const { platform, count } of row.platforms) byPlatform[platform] = count;
-    const total = byPlatform.github + byPlatform.codeforces + byPlatform.leetcode;
-    return { date: row._id, ...byPlatform, total };
-  });
+  const byDate = new Map();
+  for (const row of rows) {
+    const counts = row.counts instanceof Map ? row.counts : new Map(Object.entries(row.counts || {}));
+    for (const [monthDay, count] of counts) {
+      const date = `${row.year}-${monthDay}`;
+      const entry = byDate.get(date) ?? { date, github: 0, codeforces: 0, leetcode: 0, total: 0 };
+      entry[row.platform] = count;
+      entry.total = entry.github + entry.codeforces + entry.leetcode;
+      byDate.set(date, entry);
+    }
+  }
+
+  const activity = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 
   res.json({ activity, lastSyncedAt: user.lastSyncedAt });
 

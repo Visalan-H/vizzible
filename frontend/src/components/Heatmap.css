@@ -6,6 +6,20 @@
   fill: var(--text-mute);
 }
 
+.react-calendar-heatmap-month-label {
+  cursor: pointer;
+  transition: fill 0.15s ease, font-weight 0.15s ease;
+}
+
+.react-calendar-heatmap-month-label:hover {
+  fill: var(--ink);
+}
+
+.react-calendar-heatmap-month-label.active {
+  fill: var(--ink);
+  font-weight: 700;
+}
+
 .react-calendar-heatmap rect {
   rx: 2px; /* Slight rounded corners on each day cell */
   ry: 2px;

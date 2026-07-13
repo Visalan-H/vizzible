@@ -12,18 +12,15 @@
   font-size: 18px;
   color: var(--ink);
   text-decoration: none;
-  border: 1px solid var(--ink);
-  padding: 4px 8px;
-  border-radius: var(--rounded-sm);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   letter-spacing: -0.5px;
-  transition: background 0.15s ease;
+  transition: opacity 0.15s ease;
 }
 
 .logo:hover {
-  background: var(--surface-soft);
+  opacity: 0.8;
 }
 
 .nav-user {

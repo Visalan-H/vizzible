@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "bun server.js",
-    "dev": "bunx nodemon server.js"
+    "dev": "bunx nodemon server.js",
+    "migrate:daily-activity": "node scripts/migrate-daily-activity.js"
   },
   "keywords": [],
   "author": "",
@@ -19,7 +20,9 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.4.1",
     "graphql-request": "^6.1.0",
+    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.0",
     "zod": "^3.23.8"
