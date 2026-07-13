@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import client from '../api/client';
 import { useAuth } from '../hooks/useAuth';
@@ -71,6 +71,18 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [syncingData, setSyncingData] = useState(false);
+  const pollRef = useRef(null);
+
+  // Guards against the post-save poll loop below outliving the component -
+  // without this, navigating away mid-poll (or switching to another
+  // profile) leaves a stale setInterval calling fetchActivity() against a
+  // username that's no longer on screen, and eventually setState-ing an
+  // unmounted component. Keyed on `username` (not just unmount) since
+  // React Router reuses this component instance across param changes -
+  // /alice -> /bob is a re-render, not an unmount/remount.
+  useEffect(() => {
+    return () => clearInterval(pollRef.current);
+  }, [username]);
 
   const availableYears = useMemo(() => {
     const years = new Set(activity?.map((day) => Number(day.date.slice(0, 4))));
@@ -142,11 +154,7 @@ export default function Profile() {
       <ProfileLinks links={allLinks} />
 
       {syncingData && (
-        <div className="syncing-banner" style={{
-          backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', 
-          padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', 
-          color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center'
-        }}>
+        <div className="syncing-banner">
           Fetching your latest Codeforces and LeetCode activity...
         </div>
       )}
@@ -164,15 +172,27 @@ export default function Profile() {
             if (handlesChanged) {
               setSyncingData(true);
               let attempts = 0;
-              const pollId = setInterval(() => {
+              clearInterval(pollRef.current);
+              pollRef.current = setInterval(() => {
                 attempts++;
-                fetchActivity().then((data) => {
-                  // Stop polling if we see a new sync timestamp or hit max attempts
-                  if (data?.lastSyncedAt !== oldLastSyncedAt || attempts >= 4) {
-                    clearInterval(pollId);
-                    setSyncingData(false);
-                  }
-                });
+                fetchActivity()
+                  .then((data) => {
+                    // Stop polling if we see a new sync timestamp or hit max attempts
+                    if (data?.lastSyncedAt !== oldLastSyncedAt || attempts >= 4) {
+                      clearInterval(pollRef.current);
+                      setSyncingData(false);
+                    }
+                  })
+                  // A single failed poll attempt (network blip, etc.) shouldn't
+                  // leave this running forever - without this, a rejected
+                  // fetchActivity() call skips the check above entirely and
+                  // the interval just keeps firing past the 4-attempt cap.
+                  .catch(() => {
+                    if (attempts >= 4) {
+                      clearInterval(pollRef.current);
+                      setSyncingData(false);
+                    }
+                  });
               }, 2500);
             }
           }}

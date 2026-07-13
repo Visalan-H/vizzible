@@ -5,10 +5,9 @@ import { Link } from 'react-router-dom';
 export default function Hero({ user, loading, error }) {
   return (
     <div className="hero-content">
-      <h1>Make your coding Vizzible.</h1>
+      <h1>Your coding activity, in one link.</h1>
       <p className="landing-sub">
-        One link to showcase your activity across GitHub, LeetCode, and Codeforces.
-        Sign in, link your handles, and share your developer profile.
+        Combine your GitHub, LeetCode, and Codeforces heatmaps into a single shareable profile.
       </p>
 
       {error && <p className="landing-error">{error}</p>}

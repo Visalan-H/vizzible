@@ -52,6 +52,12 @@
   display: block;
 }
 
+.theme-toggle-btn {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+}
+
 @media (max-width: 600px) {
   .nav-user {
     gap: var(--space-xs);

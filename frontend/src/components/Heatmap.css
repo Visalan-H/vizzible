@@ -49,3 +49,9 @@
 .heatmap-scroll-inner {
   min-width: 760px; /* forces horizontal scroll instead of shrinking */
 }
+
+@media (max-width: 768px) {
+  .heatmap-scroll-inner {
+    min-width: 1000px; /* Make it more zoomed in on phones */
+  }
+}

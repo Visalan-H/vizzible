@@ -1,6 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { requireAuth } = require('../middleware/requireAuth');
+const { requireSameOrigin } = require('../middleware/requireSameOrigin');
 const {
   redirectToGithub,
   handleGithubCallback,
@@ -17,6 +18,6 @@ const oauthLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHe
 router.get('/github', oauthLimiter, redirectToGithub);
 router.get('/github/callback', oauthLimiter, handleGithubCallback);
 router.get('/me', requireAuth, getCurrentUser);
-router.post('/logout', logout);
+router.post('/logout', requireSameOrigin, logout);
 
 module.exports = router;

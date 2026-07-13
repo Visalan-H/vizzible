@@ -6,6 +6,20 @@ const { encrypt } = require('../utils/crypto');
 
 const STATE_COOKIE = 'oauth_state';
 
+// Shared by every place that sets/clears the session or state cookie, so
+// the httpOnly/secure/sameSite trio can't drift out of sync between them -
+// a clearCookie() call with different options than the original set()
+// silently fails to actually clear the cookie.
+function cookieOptions(maxAge) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    ...(maxAge != null && { maxAge }),
+  };
+}
+
 function redirectToGithub(req, res) {
   // Random per-attempt state, stored in a short-lived httpOnly cookie and
   // checked against what GitHub echoes back on callback. Without this, an
@@ -13,13 +27,7 @@ function redirectToGithub(req, res) {
   // URL to a victim, and get the victim's session bound to the attacker's
   // GitHub account (login CSRF).
   const state = crypto.randomBytes(16).toString('hex');
-  const isProduction = process.env.NODE_ENV === 'production';
-  res.cookie(STATE_COOKIE, state, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 5 * 60 * 1000,
-  });
+  res.cookie(STATE_COOKIE, state, cookieOptions(5 * 60 * 1000));
 
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID,
@@ -34,7 +42,7 @@ function redirectToGithub(req, res) {
 async function handleGithubCallback(req, res) {
   const { code, state } = req.query;
   const expectedState = req.cookies[STATE_COOKIE];
-  res.clearCookie(STATE_COOKIE);
+  res.clearCookie(STATE_COOKIE, cookieOptions());
 
   if (!state || !expectedState || state !== expectedState) {
     return res.redirect(`${process.env.CLIENT_URL}/?error=github_oauth_failed`);
@@ -75,13 +83,7 @@ async function handleGithubCallback(req, res) {
   }
 
   const session = signSession(user._id.toString());
-  const isProduction = process.env.NODE_ENV === 'production';
-  res.cookie('session', session, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  });
+  res.cookie('session', session, cookieOptions(30 * 24 * 60 * 60 * 1000));
 
   res.redirect(`${process.env.CLIENT_URL}/${user.githubUsername}`);
 }
@@ -98,12 +100,7 @@ async function getCurrentUser(req, res) {
 }
 
 function logout(req, res) {
-  const isProduction = process.env.NODE_ENV === 'production';
-  res.clearCookie('session', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-  });
+  res.clearCookie('session', cookieOptions());
   res.status(204).end();
 }
 

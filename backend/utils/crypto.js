@@ -37,8 +37,15 @@ function decrypt(stored) {
     const decipher = crypto.createDecipheriv(ALGO, key, iv);
     decipher.setAuthTag(tag);
     return decipher.update(data) + decipher.final('utf8');
-  } catch {
-    return stored; // fallback: treat as plaintext
+  } catch (err) {
+    // Falling back to the raw stored value keeps a bad decrypt from taking
+    // down the whole sync (it'll just fail as an invalid GitHub token
+    // downstream), but that failure mode looks identical to "GitHub token
+    // expired" unless this is logged - most likely cause is
+    // TOKEN_ENCRYPTION_KEY being rotated/wrong for tokens encrypted under
+    // the old key.
+    console.error('[crypto] decrypt failed, falling back to raw stored value:', err.message);
+    return stored;
   }
 }
 

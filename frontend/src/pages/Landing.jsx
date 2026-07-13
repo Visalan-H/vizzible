@@ -5,6 +5,8 @@ import Hero from '../components/landing/Hero';
 import MockDashboard from '../components/landing/MockDashboard';
 import FeaturesSection from '../components/landing/FeaturesSection';
 import FaqSection from '../components/landing/FaqSection';
+import CursorTrail from '../components/landing/CursorTrail';
+import SideDecorations from '../components/landing/SideDecorations';
 import './Profile.css';
 import './Landing.css';
 
@@ -23,6 +25,8 @@ export default function Landing() {
 
   return (
     <section className="landing">
+      <CursorTrail />
+      <SideDecorations />
       <Hero user={user} loading={loading} error={error} />
 
       {/* Real-profile styled Mock Dashboard (Hero Asset) */}
