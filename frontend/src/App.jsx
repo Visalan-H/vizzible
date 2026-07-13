@@ -12,6 +12,9 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/:username" element={<Profile />} />
       </Routes>
+      <footer className="global-footer">
+        built by <a href="https://visalan.me" target="_blank" rel="noopener noreferrer">vizz.</a>
+      </footer>
     </>
   )
 }

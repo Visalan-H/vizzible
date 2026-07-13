@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 
 const linkSchema = new mongoose.Schema(
   {
-    label: { type: String, required: true, trim: true, maxlength: 40 },
+    label: { type: String, trim: true, maxlength: 40 },
     url: { type: String, required: true, trim: true, maxlength: 300 },
+    icon: { type: String, default: 'generic' }
   },
   { _id: false }
 );

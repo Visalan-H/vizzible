@@ -7,7 +7,7 @@ import { useHoverCapable } from '../hooks/useHoverCapable';
 import PlatformToggle from '../components/PlatformToggle';
 import YearSelector from '../components/YearSelector';
 import ActivityBoard from '../components/ActivityBoard';
-import ProfileLinks from '../components/ProfileLinks';
+import ProfileLinks, { ICON_MAP } from '../components/ProfileLinks';
 import './Profile.css';
 
 const PLATFORM_COLOR = {
@@ -241,7 +241,7 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
   const [leetcodeUsername, setLeetcodeUsername] = useState(profile.leetcodeUsername || '');
   const [tagline, setTagline] = useState(profile.tagline || '');
   const [bio, setBio] = useState(profile.bio || '');
-  const [links, setLinks] = useState(profile.links?.length ? profile.links : [{ label: '', url: '' }]);
+  const [links, setLinks] = useState(profile.links?.length ? profile.links : [{ label: '', url: '', icon: 'generic' }]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // 'saved' | 'error' | null
 
@@ -251,7 +251,7 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
 
   function addLink() {
     if (links.length >= MAX_LINKS) return;
-    setLinks((prev) => [...prev, { label: '', url: '' }]);
+    setLinks((prev) => [...prev, { label: '', url: '', icon: 'generic' }]);
   }
 
   function removeLink(index) {
@@ -264,8 +264,12 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
     setStatus(null);
 
     const cleanedLinks = links.reduce((acc, link) => {
-      const cleaned = { label: link.label.trim(), url: normalizeUrl(link.url) };
-      if (cleaned.label && cleaned.url) acc.push(cleaned);
+      const cleaned = {
+        label: (link.icon || 'generic') === 'generic' ? (link.label || '').trim() : '',
+        url: normalizeUrl(link.url),
+        icon: link.icon || 'generic'
+      };
+      if (cleaned.url) acc.push(cleaned);
       return acc;
     }, []);
 
@@ -351,14 +355,33 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
         <div className="links-editor">
           {links.map((link, i) => (
             <div className="links-editor-row" key={i}>
+              <div className="icon-selector-row">
+                {Object.entries(ICON_MAP).map(([key, info]) => {
+                  const IconComp = info.component;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`icon-selector-btn ${(link.icon || 'generic') === key ? 'active' : ''}`}
+                      onClick={() => updateLink(i, 'icon', key)}
+                      title={info.label}
+                      aria-label={info.label}
+                    >
+                      <IconComp />
+                    </button>
+                  );
+                })}
+              </div>
+              {(link.icon || 'generic') === 'generic' && (
+                <input
+                  className="text-input link-label-input"
+                  placeholder="Label (e.g. Portfolio)"
+                  value={link.label || ''}
+                  onChange={(e) => updateLink(i, 'label', e.target.value)}
+                />
+              )}
               <input
-                className="text-input"
-                placeholder="Label (e.g. Portfolio)"
-                value={link.label}
-                onChange={(e) => updateLink(i, 'label', e.target.value)}
-              />
-              <input
-                className="text-input"
+                className="text-input link-url-input"
                 placeholder="yoursite.com"
                 value={link.url}
                 onChange={(e) => updateLink(i, 'url', e.target.value)}

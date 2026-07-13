@@ -146,11 +146,50 @@
   align-items: center;
 }
 
-.links-editor-row .text-input:first-child {
-  flex: 0 0 160px;
+.icon-selector-row {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  flex-shrink: 0;
 }
 
-.links-editor-row .text-input:last-child {
+.icon-selector-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-ash);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-selector-btn:hover {
+  color: var(--text-mute);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme="dark"] .icon-selector-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.icon-selector-btn.active {
+  color: var(--ink);
+  background: var(--surface-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="dark"] .icon-selector-btn.active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.links-editor-row .link-url-input {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -280,32 +319,13 @@
     width: 100%;
   }
   
-  /* Link editor row styling */
   .links-editor-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "label remove"
-      "url remove";
-    gap: var(--space-xs);
-    width: 100%;
+    flex-wrap: wrap;
   }
   
-  .links-editor-row .text-input:first-child {
-    grid-area: label;
-    flex: none;
-    width: 100%;
-  }
-  
-  .links-editor-row .text-input:last-child {
-    grid-area: url;
-    flex: none;
-    width: 100%;
-  }
-  
-  .links-editor-remove {
-    grid-area: remove;
-    align-self: center;
+  .links-editor-row .icon-selector-row {
+    flex: 1 1 100%;
+    justify-content: space-between;
   }
 
   .form-actions {

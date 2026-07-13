@@ -18,4 +18,4 @@ React · Express · MongoDB · GitHub OAuth — deployed on Vercel.
 
 ## Status
 
-Early build — GitHub, Codeforces, and LeetCode heatmaps are live. More platforms may follow if the demand's there.
+Early build — GitHub, Codeforces, and LeetCode heatmaps are live, with per-day and per-month detail panels, light/dark theming, and profile customization (tagline, bio, up to 10 links). More platforms may follow if the demand's there.

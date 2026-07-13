@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 const ThemeContext = createContext();
 
@@ -36,8 +37,43 @@ export function ThemeProvider({ children }) {
 
   const activeTheme = themeState || systemTheme;
 
-  const toggleTheme = () => {
-    setThemeState(activeTheme === 'dark' ? 'light' : 'dark');
+  const toggleTheme = (e) => {
+    const nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
+
+    if (!document.startViewTransition) {
+      setThemeState(nextTheme);
+      return;
+    }
+
+    const x = e?.clientX ?? window.innerWidth / 2;
+    const y = e?.clientY ?? window.innerHeight / 2;
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transition = document.startViewTransition(() => {
+      flushSync(() => {
+        setThemeState(nextTheme);
+      });
+    });
+
+    transition.ready.then(() => {
+      const clipPath = [
+        `circle(0px at ${x}px ${y}px)`,
+        `circle(${endRadius}px at ${x}px ${y}px)`
+      ];
+      document.documentElement.animate(
+        {
+          clipPath: clipPath,
+        },
+        {
+          duration: 400,
+          easing: 'ease-out',
+          pseudoElement: '::view-transition-new(root)',
+        }
+      );
+    });
   };
 
   return (

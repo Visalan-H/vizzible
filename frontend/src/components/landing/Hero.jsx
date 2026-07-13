@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
+import DecrypterText from './DecrypterText';
 
 // Signed-out visitors get the GitHub sign-in CTA; signed-in visitors get a
 // direct link to their own profile instead of being asked to sign in again.
 export default function Hero({ user, loading, error }) {
   return (
     <div className="hero-content">
-      <h1>Your coding activity, in one link.</h1>
+      <h1>Make your coding <span className="vizz-title-container"><a href="https://visalan.me" target="_blank" rel="noopener noreferrer" className="vizz-link">Vizz<span className="vizz-tooltip">portfolio ↗</span></a><DecrypterText text="ible" /></span>.</h1>
       <p className="landing-sub">
         Combine your GitHub, LeetCode, and Codeforces heatmaps into a single shareable profile.
       </p>

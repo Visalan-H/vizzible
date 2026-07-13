@@ -115,9 +115,13 @@ body {
   margin: 0;
   padding: 0;
   background-color: var(--canvas);
-  background-image: radial-gradient(var(--grid-dot) 1.5px, transparent 1.5px);
-  background-size: 24px 24px;
   color: var(--text-body);
+}
+
+body.landing-bg {
+  background-image: linear-gradient(var(--grid-dot) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--grid-dot) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 #root {
@@ -128,7 +132,6 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  background: var(--canvas);
   padding: 0 var(--space-lg);
 }
 
@@ -313,3 +316,38 @@ input, textarea, button, select {
     padding: 6px 12px;
   }
 }
+
+/* Global Footer styling */
+.global-footer {
+  text-align: center;
+  padding: 48px 0;
+  font-size: 13px;
+  color: var(--text-ash);
+  font-family: var(--font-mono);
+  margin-top: auto;
+}
+
+.global-footer a {
+  color: var(--text-mute);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.global-footer a:hover {
+  color: var(--ink);
+}
+
+/* Theme toggle circular reveal view transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+

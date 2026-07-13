@@ -36,7 +36,8 @@ export default function CursorTrail() {
       follower.x += (mouse.x - follower.x) * 0.12;
       follower.y += (mouse.y - follower.y) * 0.12;
       
-      const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+      const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark' || 
+        (!document.documentElement.hasAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
       // Solid clean black follower for light mode, solid white for dark mode
       ctx.fillStyle = isDarkMode ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
       

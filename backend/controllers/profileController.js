@@ -20,7 +20,8 @@ function safeWaitUntil(promise) {
 }
 
 const linkSchema = z.object({
-  label: z.string().trim().min(1).max(40),
+  label: z.string().trim().max(40).optional(),
+  icon: z.string().trim().max(50).optional(),
   url: z
     .string()
     .trim()

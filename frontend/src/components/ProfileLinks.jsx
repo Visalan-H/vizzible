@@ -34,12 +34,44 @@ function GenericLinkIcon() {
   );
 }
 
-function iconFor(url) {
+function LeetCodeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104a5.35 5.35 0 0 0-.125.513a5.527 5.527 0 0 0 .062 2.362a5.83 5.83 0 0 0 .349 1.017a5.938 5.938 0 0 0 1.271 1.818l4.277 4.193.039.038c2.248 2.165 5.852 2.133 8.063-.074l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.951-.003l-2.396 2.392a3.021 3.021 0 0 1-4.205.038l-.02-.019-4.276-4.193c-.652-.64-.972-1.469-.948-2.263a2.68 2.68 0 0 1 .066-.523a2.545 2.545 0 0 1 .619-1.164L9.13 8.114c1.058-1.134 3.204-1.27 4.43-.278l3.501 2.831c.593.48 1.461.387 1.94-.207a1.384 1.384 0 0 0-.207-1.943l-3.5-2.831c-.8-.647-1.766-1.045-2.774-1.202l2.015-2.158A1.384 1.384 0 0 0 13.483 0zm-2.866 12.815a1.38 1.38 0 0 0-1.38 1.382 1.38 1.38 0 0 0 1.38 1.382H20.79a1.38 1.38 0 0 0 1.38-1.382 1.38 1.38 0 0 0-1.38-1.382z"/>
+    </svg>
+  );
+}
+
+function CodeforcesIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="16" y="4" width="4" height="16" rx="1" />
+      <rect x="10" y="9" width="4" height="11" rx="1" />
+      <rect x="4" y="14" width="4" height="6" rx="1" />
+    </svg>
+  );
+}
+
+export const ICON_MAP = {
+  generic: { label: 'Generic (Redirect)', component: GenericLinkIcon },
+  github: { label: 'GitHub', component: GithubIcon },
+  linkedin: { label: 'LinkedIn', component: LinkedinIcon },
+  x: { label: 'X (Twitter)', component: XIcon },
+  leetcode: { label: 'LeetCode', component: LeetCodeIcon },
+  codeforces: { label: 'Codeforces', component: CodeforcesIcon },
+};
+
+function iconFor(url, explicitIconStr) {
+  if (explicitIconStr && ICON_MAP[explicitIconStr]) {
+    return ICON_MAP[explicitIconStr].component;
+  }
   try {
     const hostname = new URL(url).hostname.replace(/^www\./, '');
     if (hostname === 'github.com') return GithubIcon;
     if (hostname.includes('linkedin.com')) return LinkedinIcon;
     if (hostname === 'x.com' || hostname === 'twitter.com') return XIcon;
+    if (hostname.includes('leetcode.com')) return LeetCodeIcon;
+    if (hostname.includes('codeforces.com')) return CodeforcesIcon;
   } catch {
     // malformed URL - fall through to generic icon rather than throwing
   }
@@ -49,17 +81,40 @@ function iconFor(url) {
 // links: [{label, url}] - auto-derived platform links (GitHub, Codeforces,
 // LeetCode) and the owner's manually-added ones are passed in pre-merged,
 // so they render identically with no visual seam between the two.
+function getTooltip(link) {
+  if (link.icon && ICON_MAP[link.icon] && link.icon !== 'generic') {
+    return ICON_MAP[link.icon].label;
+  }
+  try {
+    const urlObj = new URL(link.url);
+    let domain = urlObj.hostname.replace(/^www\./, '');
+    domain = domain.replace(/\.[a-z]{2,11}$/i, '');
+    return domain.charAt(0).toUpperCase() + domain.slice(1);
+  } catch {
+    return link.label || 'Link';
+  }
+}
+
 export default function ProfileLinks({ links }) {
   if (!links || links.length === 0) return null;
 
   return (
     <div className="profile-links">
-      {links.map((link) => {
-        const Icon = iconFor(link.url);
+      {links.map((link, idx) => {
+        const Icon = iconFor(link.url, link.icon);
+        const tooltip = getTooltip(link);
         return (
-          <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer" className="profile-link-chip">
+          <a
+            key={link.url + idx}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="profile-link-chip"
+            title={tooltip}
+            aria-label={tooltip}
+          >
             <Icon />
-            {link.label}
+            {tooltip}
           </a>
         );
       })}
