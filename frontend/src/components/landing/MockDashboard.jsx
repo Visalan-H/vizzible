@@ -2,8 +2,12 @@ import { useMemo, useState } from 'react';
 import PlatformToggle from '../PlatformToggle';
 import YearSelector from '../YearSelector';
 import ActivityBoard from '../ActivityBoard';
+import StreakCard from '../StreakCard';
+import PlatformLegend from '../PlatformLegend';
 import ProfileLinks from '../ProfileLinks';
-import { PLATFORM_KEY, PLATFORM_COLOR, generateMockData } from '../../utils/mockData';
+import { PLATFORM_KEY, PLATFORM_COLORS } from '../../utils/platformColors';
+import { computeStreaks } from '../../utils/streaks';
+import { generateMockData } from '../../utils/mockData';
 
 const MOCK_LINKS = [
   { label: 'GitHub', url: 'https://github.com/your-username' },
@@ -35,6 +39,8 @@ export default function MockDashboard() {
   }, [mockData, platform]);
 
   const total = useMemo(() => values.reduce((sum, v) => sum + v.count, 0), [values]);
+
+  const streaks = useMemo(() => computeStreaks(mockData, PLATFORM_KEY[platform]), [mockData, platform]);
 
   return (
     <div
@@ -73,17 +79,31 @@ export default function MockDashboard() {
         <YearSelector years={[2026]} value={2026} onChange={() => {}} />
       </div>
 
+      <StreakCard
+        current={streaks.current}
+        longest={streaks.longest}
+        platform={platform}
+        color={PLATFORM_COLORS[platform]}
+      />
+
       <div className="activity-summary-bar">
         <p className="activity-total">
           {total} activity {total === 1 ? 'point' : 'points'} in 2026
+          {streaks.current > 0 && (
+            <span className="streak-inline" style={{ color: PLATFORM_COLORS[platform] }}>
+              · {streaks.current} day streak
+            </span>
+          )}
         </p>
         <p className="activity-hint">Click a month label to see stats · hover a day for details</p>
       </div>
 
+      {platform === 'combined' && <PlatformLegend />}
+
       <ActivityBoard
         key={platform}
         values={values}
-        color={PLATFORM_COLOR[platform]}
+        color={PLATFORM_COLORS[platform]}
         startDate={START_DATE}
         endDate={END_DATE}
         year={2026}

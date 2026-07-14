@@ -259,6 +259,11 @@
   color: var(--ink);
 }
 
+.streak-inline {
+  font-weight: 700;
+  margin-left: 2px;
+}
+
 @media (max-width: 600px) {
   /* Profile Header - Grid Layout to keep avatar & name next to each other */
   .profile-header {

@@ -16,6 +16,11 @@ const FAQS = [
     answer:
       'Yes. We encrypt all access tokens at rest using AES-256-GCM, and we only ask for the minimum required read-only profile access (`read:user`) so we can read your public contribution calendar. We never request write permissions.',
   },
+  {
+    question: 'What happens when I share my profile link?',
+    answer:
+      "Vizzible generates a live preview card for your profile - your avatar, tagline, active platform handles, and a 16-week combined heatmap - so it renders as a rich preview on Twitter, Discord, Slack, LinkedIn, and WhatsApp instead of a bare link. It updates automatically as your activity does.",
+  },
 ];
 
 // Defined at module scope (not inside FaqSection) so it's a stable component

@@ -1,6 +1,17 @@
 {
   "rewrites": [
     {
+      "source": "/:username",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(twitterbot|facebookexternalhit|discordbot|slackbot|telegrambot|linkedinbot|whatsapp)"
+        }
+      ],
+      "destination": "https://vizzible-api.vercel.app/api/profiles/:username/meta"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

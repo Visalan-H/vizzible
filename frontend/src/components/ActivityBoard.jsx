@@ -40,6 +40,7 @@ export default function ActivityBoard({ values, color, startDate, endDate, year,
         startDate={startDate}
         endDate={endDate}
         highlightMonth={selectedMonth}
+        platform={platform}
       />
 
       <div className="details-grid">

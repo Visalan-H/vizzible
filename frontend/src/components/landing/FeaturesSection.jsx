@@ -12,7 +12,7 @@ export default function FeaturesSection() {
             <span className="feature-label">01 / INTEGRATION</span>
             <h3>Unified Coding Heatmap</h3>
             <p>
-              One heatmap for all your coding. We combine your activity from GitHub, LeetCode, and Codeforces into a single profile.
+              One heatmap for all your coding. We combine your activity from GitHub, LeetCode, and Codeforces into a single profile — with current and longest streaks tracked across all three, or per platform.
             </p>
           </div>
 

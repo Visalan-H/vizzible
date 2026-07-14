@@ -89,15 +89,15 @@ export default function SideDecorations() {
 
       {/* Right Panel: Isometric 3D Heatmap + Grayscale Streak */}
       <div className="side-panel right-panel">
-        <div className="decor-card futuristic-card streak-card">
+        <div className="decor-card futuristic-card decor-streak-card">
           <div className="decor-glow"></div>
           
           <div className="decor-header-futuristic">
             <span className="hologram-tag">GLOBAL STREAK</span>
             <div className="fire-indicator">
-              <svg className="streak-fire-svg" viewBox="0 0 24 24" width="16" height="16">
-                 <path d="M12 2C12 2 17 6.5 17 11.5C17 14.5 14.5 17 12 17C9.5 17 7 14.5 7 11.5C7 6.5 12 2 12 2Z" fill="var(--text-mute)" />
-                 <path d="M12 6C12 6 15 9 15 12C15 14 13.5 15.5 12 15.5C10.5 15.5 9 14 9 12C9 9 12 6 12 6Z" fill="var(--ink)" />
+              <svg className="streak-fire-svg" viewBox="0 0 24 24" width="18" height="18">
+                <path d="M12 2C12 2 17 6.5 17 11.5C17 14.5 14.5 17 12 17C9.5 17 7 14.5 7 11.5C7 6.5 12 2 12 2Z" fill="#ff4500" />
+                <path d="M12 6C12 6 15 9 15 12C15 14 13.5 15.5 12 15.5C10.5 15.5 9 14 9 12C9 9 12 6 12 6Z" fill="#ffa116" />
               </svg>
             </div>
           </div>

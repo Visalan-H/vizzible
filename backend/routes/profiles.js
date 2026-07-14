@@ -2,7 +2,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { requireAuth } = require('../middleware/requireAuth');
 const { requireSameOrigin } = require('../middleware/requireSameOrigin');
-const { updateProfile, getProfile, getActivity } = require('../controllers/profileController');
+const { updateProfile, getProfile, getActivity, getProfileOGImage, getProfileMetaHTML } = require('../controllers/profileController');
 
 const router = express.Router();
 
@@ -14,5 +14,7 @@ const updateLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardH
 router.patch('/me', requireSameOrigin, requireAuth, updateLimiter, updateProfile);
 router.get('/:username', getProfile);
 router.get('/:username/activity', getActivity);
+router.get('/:username/og-image', getProfileOGImage);
+router.get('/:username/meta', getProfileMetaHTML);
 
 module.exports = router;

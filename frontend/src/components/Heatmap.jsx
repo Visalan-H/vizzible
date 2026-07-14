@@ -2,6 +2,7 @@ import { cloneElement, memo, useEffect, useMemo, useRef } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import { useTheme } from '../hooks/ThemeContext';
 import { useHoverCapable } from '../hooks/useHoverCapable';
+import { PLATFORM_COLORS, dominantPlatform } from '../utils/platformColors';
 import 'react-calendar-heatmap/dist/styles.css';
 import './Heatmap.css';
 
@@ -20,7 +21,7 @@ function monthOf(dateStr) {
   return Number(dateStr.slice(5, 7)) - 1;
 }
 
-function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, highlightMonth, onMonthClick }) {
+function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, highlightMonth, onMonthClick, platform }) {
   const max = useMemo(() => Math.max(1, ...values.map((v) => v.count)), [values]);
   const { theme } = useTheme();
   const containerRef = useRef(null);
@@ -125,7 +126,20 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
             const isDimmed = highlightMonth != null && value && monthOf(value.date) !== highlightMonth;
             if (isDimmed) fillOpacity *= 0.15;
 
-            return cloneElement(element, { style: { fill: color, fillOpacity }, 'data-date': value?.date });
+            // In the combined view, a flat single hue across every cell
+            // hid which platform actually drove a given day - so instead
+            // the cell takes the color of whichever platform contributed
+            // the most that day (github/codeforces/leetcode), while opacity
+            // keeps reflecting the day's *total* across all platforms (via
+            // `level`/`max` above, unchanged). Per-platform tabs keep their
+            // single fixed `color` as before - there's no "dominant" to pick
+            // between when only one platform's counts are being shown.
+            const cellColor =
+              platform === 'combined' && value && value.total > 0
+                ? PLATFORM_COLORS[dominantPlatform(value)]
+                : color;
+
+            return cloneElement(element, { style: { fill: cellColor, fillOpacity }, 'data-date': value?.date });
           }}
         />
       </div>

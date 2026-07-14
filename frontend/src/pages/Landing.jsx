@@ -23,12 +23,7 @@ export default function Landing() {
     }
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    document.body.classList.add('landing-bg');
-    return () => {
-      document.body.classList.remove('landing-bg');
-    };
-  }, []);
+
 
   return (
     <section className="landing">

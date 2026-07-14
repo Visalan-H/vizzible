@@ -1,17 +1,3 @@
-export const PLATFORM_KEY = {
-  combined: 'total',
-  github: 'github',
-  leetcode: 'leetcode',
-  codeforces: 'codeforces',
-};
-
-export const PLATFORM_COLOR = {
-  combined: 'var(--ink)',
-  github: '#39d353',
-  codeforces: '#4a90d9',
-  leetcode: '#ffa116',
-};
-
 // Deterministic PRNG (mulberry32) - the landing page's demo dashboard
 // should look the same on every load/build, not jitter between refreshes.
 function mulberry32(seed) {

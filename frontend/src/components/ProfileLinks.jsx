@@ -85,13 +85,20 @@ function getTooltip(link) {
   if (link.icon && ICON_MAP[link.icon] && link.icon !== 'generic') {
     return ICON_MAP[link.icon].label;
   }
+  // A user-supplied label (or the fixed 'GitHub'/'Codeforces'/'LeetCode'
+  // label from buildPlatformLinks) takes priority - falling straight to
+  // the domain below meant the "Label" field on the edit form was
+  // collected but never actually shown, since any valid http(s) URL always
+  // parses fine and the domain branch would win every time regardless of
+  // what was typed in.
+  if (link.label?.trim()) return link.label.trim();
   try {
     const urlObj = new URL(link.url);
     let domain = urlObj.hostname.replace(/^www\./, '');
     domain = domain.replace(/\.[a-z]{2,11}$/i, '');
     return domain.charAt(0).toUpperCase() + domain.slice(1);
   } catch {
-    return link.label || 'Link';
+    return 'Link';
   }
 }
 

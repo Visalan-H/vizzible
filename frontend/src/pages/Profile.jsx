@@ -7,17 +7,12 @@ import { useHoverCapable } from '../hooks/useHoverCapable';
 import PlatformToggle from '../components/PlatformToggle';
 import YearSelector from '../components/YearSelector';
 import ActivityBoard from '../components/ActivityBoard';
+import StreakCard from '../components/StreakCard';
+import PlatformLegend from '../components/PlatformLegend';
 import ProfileLinks, { ICON_MAP } from '../components/ProfileLinks';
+import { computeStreaks } from '../utils/streaks';
+import { PLATFORM_COLORS, PLATFORM_KEY } from '../utils/platformColors';
 import './Profile.css';
-
-const PLATFORM_COLOR = {
-  combined: 'var(--ink)',
-  github: '#39d353',
-  codeforces: '#4a90d9',
-  leetcode: '#ffa116',
-};
-
-const PLATFORM_KEY = { combined: 'total', github: 'github', codeforces: 'codeforces', leetcode: 'leetcode' };
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_LINKS = 10;
@@ -107,6 +102,48 @@ export default function Profile() {
     () => [...buildPlatformLinks(profile ?? {}), ...(profile?.links || [])],
     [profile]
   );
+
+  const streaks = useMemo(
+    () => (activity ? computeStreaks(activity, PLATFORM_KEY[platform]) : { current: 0, longest: 0 }),
+    [activity, platform]
+  );
+
+  useEffect(() => {
+    if (!profile) return;
+    
+    // Set document title
+    document.title = `${profile.githubUsername} — Vizzible`;
+    
+    // Helper to update meta tags dynamically
+    const updateMeta = (selector, content) => {
+      const el = document.querySelector(selector);
+      if (el) el.setAttribute('content', content);
+    };
+
+    const description = profile.tagline || `Check out ${profile.githubUsername}'s combined coding heatmap on Vizzible.`;
+    const profileUrl = window.location.href;
+    const backendUrl = import.meta.env.VITE_API_URL || '';
+    const ogImageUrl = `${backendUrl}/api/profiles/${profile.githubUsername}/og-image`;
+
+    updateMeta('meta[name="description"]', description);
+    updateMeta('meta[property="og:url"]', profileUrl);
+    updateMeta('meta[property="og:title"]', `${profile.githubUsername} — Vizzible`);
+    updateMeta('meta[property="og:description"]', description);
+    updateMeta('meta[property="og:image"]', ogImageUrl);
+    
+    updateMeta('meta[name="twitter:url"]', profileUrl);
+    updateMeta('meta[name="twitter:title"]', `${profile.githubUsername} — Vizzible`);
+    updateMeta('meta[name="twitter:description"]', description);
+    updateMeta('meta[name="twitter:image"]', ogImageUrl);
+
+    // Reset default SEO tags on unmount
+    return () => {
+      document.title = 'Vizzible — Make your coding Vizzible';
+      updateMeta('meta[name="description"]', 'Combine your GitHub, Codeforces, and LeetCode activity heatmaps in one beautiful developer profile link.');
+      updateMeta('meta[property="og:image"]', '/og-hero.png');
+      updateMeta('meta[name="twitter:image"]', '/og-hero.png');
+    };
+  }, [profile]);
 
   if (loading) return <p className="state-msg">Loading...</p>;
   if (notFound) return <p className="state-msg">No profile at {username}.</p>;
@@ -208,19 +245,33 @@ export default function Profile() {
         <YearSelector years={availableYears} value={year} onChange={handleYearChange} />
       </div>
 
+      <StreakCard
+        current={streaks.current}
+        longest={streaks.longest}
+        platform={platform}
+        color={PLATFORM_COLORS[platform]}
+      />
+
       <div className="activity-summary-bar">
         <p className="activity-total">
           {total} activity {total === 1 ? 'point' : 'points'} in {year}
+          {streaks.current > 0 && (
+            <span className="streak-inline" style={{ color: PLATFORM_COLORS[platform] }}>
+              · {streaks.current} day streak
+            </span>
+          )}
         </p>
         <p className="activity-hint">
           Click a month label to see stats · {hoverCapable ? 'hover' : 'tap'} a day for details
         </p>
       </div>
 
+      {platform === 'combined' && <PlatformLegend />}
+
       <ActivityBoard
         key={`${platform}-${year}`}
         values={values}
-        color={PLATFORM_COLOR[platform]}
+        color={PLATFORM_COLORS[platform]}
         startDate={yearBounds.start}
         endDate={yearBounds.end}
         year={year}
