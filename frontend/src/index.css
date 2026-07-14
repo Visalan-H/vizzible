@@ -334,6 +334,33 @@ input, textarea, button, select {
   color: var(--ink);
 }
 
+/* Auth-state skeleton - shown in place of the sign-in/sign-out button while
+   useAuth()'s initial /api/auth/me request is in flight, sized to match
+   its eventual replacement so nothing needs to shift when the real
+   content swaps in. */
+.skeleton-pill {
+  border-radius: var(--rounded-sm);
+  background: var(--surface-card);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Smooth fade-in for auth elements (sign-in / sign-out / profile link)
+   after the skeleton placeholder disappears. Prevents the jarring
+   pop-in that causes a perceived layout shift. */
+.auth-fade-in {
+  animation: authFadeIn 250ms ease both;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Theme toggle circular reveal view transitions */
 ::view-transition-old(root),
 ::view-transition-new(root) {

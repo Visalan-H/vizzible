@@ -29,6 +29,21 @@
   gap: var(--space-lg);
 }
 
+/* Fixed-height wrapper so the nav row height never changes when the
+   skeleton swaps to a button or to nothing (logged-out). */
+.nav-auth-slot {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.nav-auth-skeleton {
+  width: 90px;
+  height: 38px; /* matches base .btn-ghost height */
+  flex-shrink: 0;
+}
+
 .nav-profile-link {
   display: flex;
   align-items: center;

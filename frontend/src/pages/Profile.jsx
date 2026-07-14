@@ -114,10 +114,25 @@ export default function Profile() {
     // Set document title
     document.title = `${profile.githubUsername} — Vizzible`;
     
-    // Helper to update meta tags dynamically
-    const updateMeta = (selector, content) => {
-      const el = document.querySelector(selector);
-      if (el) el.setAttribute('content', content);
+    // Dynamically created tags we need to clean up on unmount.
+    const createdTags = [];
+
+    // Helper to update meta tags dynamically - creates the tag if it
+    // doesn't already exist in index.html (needed for og:image:width etc.)
+    const setMeta = (selector, content) => {
+      let el = document.querySelector(selector);
+      if (el) {
+        el.setAttribute('content', content);
+      } else {
+        el = document.createElement('meta');
+        const propMatch = selector.match(/property="([^"]+)"/);
+        const nameMatch = selector.match(/name="([^"]+)"/);
+        if (propMatch) el.setAttribute('property', propMatch[1]);
+        if (nameMatch) el.setAttribute('name', nameMatch[1]);
+        el.setAttribute('content', content);
+        document.head.appendChild(el);
+        createdTags.push(el);
+      }
     };
 
     const description = profile.tagline || `Check out ${profile.githubUsername}'s combined coding heatmap on Vizzible.`;
@@ -125,23 +140,33 @@ export default function Profile() {
     const backendUrl = import.meta.env.VITE_API_URL || '';
     const ogImageUrl = `${backendUrl}/api/profiles/${profile.githubUsername}/og-image`;
 
-    updateMeta('meta[name="description"]', description);
-    updateMeta('meta[property="og:url"]', profileUrl);
-    updateMeta('meta[property="og:title"]', `${profile.githubUsername} — Vizzible`);
-    updateMeta('meta[property="og:description"]', description);
-    updateMeta('meta[property="og:image"]', ogImageUrl);
+    setMeta('meta[name="description"]', description);
+    setMeta('meta[property="og:type"]', 'profile');
+    setMeta('meta[property="og:url"]', profileUrl);
+    setMeta('meta[property="og:title"]', `${profile.githubUsername} — Vizzible`);
+    setMeta('meta[property="og:description"]', description);
+    setMeta('meta[property="og:image"]', ogImageUrl);
+    setMeta('meta[property="og:image:width"]', '1200');
+    setMeta('meta[property="og:image:height"]', '630');
     
-    updateMeta('meta[name="twitter:url"]', profileUrl);
-    updateMeta('meta[name="twitter:title"]', `${profile.githubUsername} — Vizzible`);
-    updateMeta('meta[name="twitter:description"]', description);
-    updateMeta('meta[name="twitter:image"]', ogImageUrl);
+    setMeta('meta[name="twitter:url"]', profileUrl);
+    setMeta('meta[name="twitter:title"]', `${profile.githubUsername} — Vizzible`);
+    setMeta('meta[name="twitter:description"]', description);
+    setMeta('meta[name="twitter:image"]', ogImageUrl);
 
     // Reset default SEO tags on unmount
     return () => {
       document.title = 'Vizzible — Make your coding Vizzible';
-      updateMeta('meta[name="description"]', 'Combine your GitHub, Codeforces, and LeetCode activity heatmaps in one beautiful developer profile link.');
-      updateMeta('meta[property="og:image"]', '/og-hero.png');
-      updateMeta('meta[name="twitter:image"]', '/og-hero.png');
+      const resetMeta = (selector, content) => {
+        const el = document.querySelector(selector);
+        if (el) el.setAttribute('content', content);
+      };
+      resetMeta('meta[name="description"]', 'Combine your GitHub, Codeforces, and LeetCode activity heatmaps in one beautiful developer profile link.');
+      resetMeta('meta[property="og:type"]', 'website');
+      resetMeta('meta[property="og:image"]', '/og-hero.png');
+      resetMeta('meta[name="twitter:image"]', '/og-hero.png');
+      // Remove any tags we dynamically created
+      createdTags.forEach((el) => el.remove());
     };
   }, [profile]);
 

@@ -1,6 +1,7 @@
 const { z } = require('zod');
 const { waitUntil } = require('@vercel/functions');
 const axios = require('axios');
+const { Resvg } = require('@resvg/resvg-js');
 const User = require('../models/User');
 const DailyActivity = require('../models/DailyActivity');
 const { syncUserActivity, isStale } = require('../services/sync');
@@ -192,10 +193,10 @@ async function getProfileOGImage(req, res) {
 
     const activeDaysCount = byDate.size;
 
-    // Calculate dates for the last 24 weeks (168 days) for the heatmap
+    // Calculate dates for the last 46 weeks (322 days) for the heatmap
     const today = new Date();
     const startDate = new Date();
-    startDate.setDate(today.getDate() - 23 * 7 - today.getDay());
+    startDate.setDate(today.getDate() - 45 * 7 - today.getDay());
     startDate.setHours(0, 0, 0, 0);
 
     const grid = [];
@@ -267,39 +268,7 @@ async function getProfileOGImage(req, res) {
     if (taglineStr.length > 55) taglineStr = taglineStr.slice(0, 52) + '...';
     const escapedTagline = escapeXml(taglineStr);
 
-    let handlesSVG = '';
-    let xOffset = 110;
-    
-    // GitHub
-    handlesSVG += `
-      <g transform="translate(${xOffset}, 225)">
-        <rect width="130" height="36" rx="18" fill="#fafafa" stroke="rgba(0,0,0,0.12)" stroke-width="1" />
-        <circle cx="20" cy="18" r="8" fill="#24292f" />
-        <text x="36" y="23" class="font-mono" font-size="14" font-weight="600" fill="#24292f">GitHub</text>
-      </g>
-    `;
-    xOffset += 145;
-    
-    if (user.codeforcesHandle) {
-      handlesSVG += `
-        <g transform="translate(${xOffset}, 225)">
-          <rect width="145" height="36" rx="18" fill="#f4f7fb" stroke="rgba(59, 121, 181, 0.2)" stroke-width="1" />
-          <circle cx="20" cy="18" r="8" fill="#3b79b5" />
-          <text x="36" y="23" class="font-mono" font-size="14" font-weight="600" fill="#3b79b5">Codeforces</text>
-        </g>
-      `;
-      xOffset += 160;
-    }
-    
-    if (user.leetcodeUsername) {
-      handlesSVG += `
-        <g transform="translate(${xOffset}, 225)">
-          <rect width="140" height="36" rx="18" fill="#fffcf6" stroke="rgba(217, 119, 6, 0.2)" stroke-width="1" />
-          <circle cx="20" cy="18" r="8" fill="#d97706" />
-          <text x="36" y="23" class="font-mono" font-size="14" font-weight="600" fill="#d97706">LeetCode</text>
-        </g>
-      `;
-    }
+
 
     const gridMax = Math.max(1, ...grid.map((d) => d.github + d.codeforces + d.leetcode));
     const RAMPS = {
@@ -315,12 +284,27 @@ async function getProfileOGImage(req, res) {
       return 0;
     }
 
+    // Dynamic month labels & cell grid SVG
     let cellsSVG = '';
+    const monthLabels = [];
+    let lastMonth = -1;
+    
     grid.forEach((day, index) => {
       const col = Math.floor(index / 7);
       const row = index % 7;
-      const x = 640 + col * 19;
-      const y = 200 + row * 19;
+      const x = 40 + col * 24.3; // Spread slightly to use 1120px width
+      const y = 330 + row * 24.3;
+      
+      // Collect month labels at column transitions
+      if (row === 0) {
+        const date = new Date(day.date);
+        const month = date.getMonth();
+        if (month !== lastMonth) {
+          const monthName = date.toLocaleString('en-US', { month: 'short' });
+          monthLabels.push({ text: monthName, x });
+          lastMonth = month;
+        }
+      }
       
       let fillColor = 'rgba(0, 0, 0, 0.05)';
       const totalVal = day.github + day.codeforces + day.leetcode;
@@ -333,119 +317,112 @@ async function getProfileOGImage(req, res) {
               : 'leetcode';
         fillColor = RAMPS[dominant][tierIndex(totalVal)];
       }
-      cellsSVG += `  <rect x="${x}" y="${y}" width="15" height="15" rx="3" fill="${fillColor}" />\n`;
+      cellsSVG += `  <rect x="${x}" y="${y}" width="21" height="21" rx="3.5" fill="${fillColor}" />\n`;
+    });
+
+    let monthsSVG = '';
+    monthLabels.forEach((label) => {
+      monthsSVG += `<text x="${label.x}" y="315" class="font-mono" font-size="16" fill="#666666" font-weight="500">${label.text}</text>\n`;
     });
 
     const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="24" flood-color="#000000" flood-opacity="0.08" />
-    </filter>
     <clipPath id="avatar-clip">
-      <circle cx="160" cy="155" r="50" />
+      <circle cx="83" cy="75" r="40" />
     </clipPath>
   </defs>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
+    
     .font-mono {
-      font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
     }
   </style>
 
-  <!-- Canvas Background -->
-  <rect width="1200" height="630" fill="#F2EDED" />
+  <!-- Solid Canvas Background matching site theme exactly -->
+  <rect width="1200" height="630" fill="#F2EDED" stroke="#000000" stroke-width="4" />
 
-  <!-- Floating White Banner Card -->
-  <rect x="60" y="60" width="1080" height="510" rx="16" fill="#ffffff" stroke="rgba(0, 0, 0, 0.06)" stroke-width="1.5" filter="url(#card-shadow)" />
+  <!-- Profile Info Header -->
+  <circle cx="83" cy="75" r="42" fill="none" stroke="rgba(0, 0, 0, 0.15)" stroke-width="2" />
+  <image href="${avatarDataUrl}" x="41" y="33" width="84" height="84" clip-path="url(#avatar-clip)" />
 
-  <!-- Vizzible Logo -->
-  <text x="1090" y="115" class="font-mono" font-size="28" font-weight="700" fill="#000000" letter-spacing="-1px" text-anchor="end">vizzible</text>
-  <circle cx="1103" cy="105" r="5" fill="#30d158" />
+  <text x="145" y="68" class="font-mono" font-size="42" font-weight="800" fill="#000000" letter-spacing="-1px">${escapedUsername}</text>
+  <text x="145" y="105" class="font-mono" font-size="24" font-weight="500" fill="#333333">${escapedTagline}</text>
 
-  <!-- Left Side: Profile Info -->
-  <circle cx="160" cy="155" r="51" fill="none" stroke="rgba(0, 0, 0, 0.08)" stroke-width="2" />
-  <image href="${avatarDataUrl}" x="110" y="105" width="100" height="100" clip-path="url(#avatar-clip)" />
-
-  <text x="240" y="145" class="font-mono" font-size="42" font-weight="700" fill="#000000">${escapedUsername}</text>
-  <text x="240" y="180" class="font-mono" font-size="18" font-weight="500" fill="#6b7280">${escapedTagline}</text>
-
-  <!-- Handles Pills -->
-  ${handlesSVG}
-
-  <!-- Streak Card -->
-  <g transform="translate(110, 310)">
-    <rect width="470" height="90" rx="12" fill="rgba(0,0,0,0.02)" stroke="rgba(0,0,0,0.08)" stroke-width="1" />
+  <!-- Clean Stats Row (No Box) -->
+  <g transform="translate(40, 165)">
+    <!-- Dividers -->
+    <line x1="280" y1="5" x2="280" y2="65" stroke="rgba(0, 0, 0, 0.15)" stroke-width="1.5" />
+    <line x1="560" y1="5" x2="560" y2="65" stroke="rgba(0, 0, 0, 0.15)" stroke-width="1.5" />
+    <line x1="840" y1="5" x2="840" y2="65" stroke="rgba(0, 0, 0, 0.15)" stroke-width="1.5" />
     
     <!-- Current Streak -->
-    <circle cx="45" cy="45" r="20" fill="rgba(0,0,0,0.05)" />
-    <!-- Fire Icon Base -->
-    <path d="M45 31C45 31 51 37 51 43C51 47.5 48 50.5 45 50.5C42 50.5 39 47.5 39 43C39 37 45 31 45 31Z" fill="#ff4500" />
-    <!-- Fire Icon Inner -->
-    <path d="M45 37C45 37 49 41.5 49 45C49 48 47 50 45 50C43 50 41 48 41 45C41 41.5 45 37 45 37Z" fill="#ffa116" />
+    <text x="140" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${currentStreak}</text>
+    <text x="140" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">CURRENT STREAK</text>
     
-    <text x="85" y="43" class="font-mono" font-size="26" font-weight="700" fill="#000000">${currentStreak}</text>
-    <text x="85" y="65" class="font-mono" font-size="13" font-weight="500" fill="#666666">Day Current Streak</text>
-    
-    <line x1="235" y1="20" x2="235" y2="70" stroke="rgba(0,0,0,0.08)" stroke-width="1" />
-
     <!-- Longest Streak -->
-    <circle cx="280" cy="45" r="20" fill="rgba(0,0,0,0.05)" />
-    <!-- Fire Icon Neutral -->
-    <path d="M280 31C280 31 286 37 286 43C286 47.5 283 50.5 280 50.5C277 50.5 274 47.5 274 43C274 37 280 31 280 31Z" fill="#888888" />
+    <text x="420" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${longestStreak}</text>
+    <text x="420" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">LONGEST STREAK</text>
     
-    <text x="320" y="43" class="font-mono" font-size="26" font-weight="700" fill="#000000">${longestStreak}</text>
-    <text x="320" y="65" class="font-mono" font-size="13" font-weight="500" fill="#666666">Day Longest Streak</text>
+    <!-- Total Activity -->
+    <text x="700" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${totalSubmissions}</text>
+    <text x="700" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">TOTAL ACTIVITY</text>
+    
+    <!-- Active Days -->
+    <text x="980" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${activeDaysCount}</text>
+    <text x="980" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">ACTIVE DAYS</text>
   </g>
 
-  <!-- Stats Boxes -->
-  <g transform="translate(110, 430)">
-    <rect width="225" height="85" rx="12" fill="#fafafa" stroke="rgba(0,0,0,0.08)" stroke-width="1" />
-    <text x="25" y="45" class="font-mono" font-size="28" font-weight="700" fill="#000000">${totalSubmissions}</text>
-    <text x="25" y="65" class="font-mono" font-size="11" font-weight="600" fill="#888888" letter-spacing="0.5">TOTAL ACTIVITY</text>
-  </g>
-
-  <g transform="translate(355, 430)">
-    <rect width="225" height="85" rx="12" fill="#fafafa" stroke="rgba(0,0,0,0.08)" stroke-width="1" />
-    <text x="25" y="45" class="font-mono" font-size="28" font-weight="700" fill="#000000">${activeDaysCount}</text>
-    <text x="25" y="65" class="font-mono" font-size="11" font-weight="600" fill="#888888" letter-spacing="0.5">ACTIVE DAYS</text>
-  </g>
-
-  <!-- Right Side: Heatmap -->
-  <text x="640" y="165" class="font-mono" font-size="13" font-weight="700" fill="#666666" letter-spacing="1">ACTIVITY HEATMAP (LAST 24 WEEKS)</text>
+  <!-- Month labels -->
+  ${monthsSVG}
   
+  <!-- Cells grid -->
   <g>
     ${cellsSVG}
   </g>
 
   <!-- Legend -->
-  <g transform="translate(640, 375)">
-    <text x="0" y="12" class="font-mono" font-size="12" font-weight="500" fill="#888888">Less</text>
-    <rect x="40" y="1" width="14" height="14" rx="3" fill="rgba(0, 0, 0, 0.05)" />
-    <rect x="58" y="1" width="14" height="14" rx="3" fill="#c6ebd1" />
-    <rect x="76" y="1" width="14" height="14" rx="3" fill="#7bc96f" />
-    <rect x="94" y="1" width="14" height="14" rx="3" fill="#239a3b" />
-    <rect x="112" y="1" width="14" height="14" rx="3" fill="#196127" />
-    <text x="134" y="12" class="font-mono" font-size="12" font-weight="500" fill="#888888">More</text>
+  <g transform="translate(40, 545)">
+    <text x="0" y="16" class="font-mono" font-size="16" font-weight="600" fill="#666666">Less</text>
+    <rect x="55" y="0" width="22" height="22" rx="3.5" fill="rgba(0, 0, 0, 0.05)" />
+    <rect x="83" y="0" width="22" height="22" rx="3.5" fill="#c6ebd1" />
+    <rect x="111" y="0" width="22" height="22" rx="3.5" fill="#7bc96f" />
+    <rect x="139" y="0" width="22" height="22" rx="3.5" fill="#239a3b" />
+    <rect x="167" y="0" width="22" height="22" rx="3.5" fill="#196127" />
+    <text x="202" y="16" class="font-mono" font-size="16" font-weight="600" fill="#666666">More</text>
   </g>
 
   <!-- Platforms Key -->
-  <g transform="translate(640, 405)">
-    <rect x="0" y="2" width="12" height="12" rx="3" fill="#196127" />
-    <text x="18" y="13" class="font-mono" font-size="12" font-weight="500" fill="#666666">GitHub</text>
+  <g transform="translate(760, 545)">
+    <rect x="0" y="3" width="16" height="16" rx="3" fill="#196127" />
+    <text x="26" y="16" class="font-mono" font-size="16" font-weight="700" fill="#555555">GitHub</text>
     
-    <rect x="85" y="2" width="12" height="12" rx="3" fill="#3b79b5" />
-    <text x="103" y="13" class="font-mono" font-size="12" font-weight="500" fill="#666666">Codeforces</text>
+    <rect x="110" y="3" width="16" height="16" rx="3" fill="#3b79b5" />
+    <text x="136" y="16" class="font-mono" font-size="16" font-weight="700" fill="#555555">Codeforces</text>
     
-    <rect x="195" y="2" width="12" height="12" rx="3" fill="#d97706" />
-    <text x="213" y="13" class="font-mono" font-size="12" font-weight="500" fill="#666666">LeetCode</text>
+    <rect x="256" y="3" width="16" height="16" rx="3" fill="#d97706" />
+    <text x="282" y="16" class="font-mono" font-size="16" font-weight="700" fill="#555555">LeetCode</text>
   </g>
 
+  <!-- Brand branding at the top-right for clean space -->
+  <text x="1160" y="68" class="font-mono" font-size="32" font-weight="800" fill="#000000" letter-spacing="-1px" text-anchor="end">vizzible.vercel.app</text>
 </svg>`;
 
-    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-    return res.send(svg);
+
+    // WhatsApp's crawler (and several other unfurlers) silently ignore an
+    // SVG og:image - no error, just a text-only preview with no thumbnail
+    // - so this is rasterized to PNG rather than sent as-is. resvg (not
+    // sharp) specifically: it's the same SVG-to-PNG rasterizer Vercel's own
+    // @vercel/og tooling uses, and it's a much smaller native dependency
+    // than sharp+libvips - sharp has an open, unresolved issue as of mid-
+    // 2026 (lovell/sharp#4543) where Vercel's file tracer fails to bundle
+    // its nested platform binary for non-Next.js frameworks like this one.
+    const resvg = new Resvg(svg);
+    const pngBuffer = resvg.render().asPng();
+    return res.send(pngBuffer);
   } catch (err) {
     console.error('Error generating OG image:', err);
     return res.status(500).send('Error generating image');
@@ -488,6 +465,9 @@ async function getProfileOGImage(req, res) {
   <meta property="og:title" content="${username} — Vizzible Profile">
   <meta property="og:description" content="${tagline}">
   <meta property="og:image" content="${ogImageUrl}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">

@@ -6,7 +6,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(twitterbot|facebookexternalhit|discordbot|slackbot|telegrambot|linkedinbot|whatsapp)"
+          "value": "(Twitterbot|facebookexternalhit|Discordbot|Slackbot|TelegramBot|LinkedInBot|WhatsApp)"
         }
       ],
       "destination": "https://vizzible-api.vercel.app/api/profiles/:username/meta"

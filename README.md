@@ -4,7 +4,7 @@
 
 You've got a GitHub streak, a Codeforces rating, and a LeetCode grind — spread across three different profiles nobody's going to click through. Vizzible puts them on one page, one link, one heatmap.
 
-Sign in with GitHub, drop in your Codeforces and LeetCode usernames, and get `vizzible.app/you` — a shareable, resume-ready snapshot of everything you've built and solved this year. Drop it in your GitHub bio, your resume, your LinkedIn.
+Sign in with GitHub, drop in your Codeforces and LeetCode usernames, and get `vizzible.vercel.app/you` — a shareable, resume-ready snapshot of everything you've built and solved this year. Drop it in your GitHub bio, your resume, your LinkedIn.
 
 ## Why it's actually useful
 

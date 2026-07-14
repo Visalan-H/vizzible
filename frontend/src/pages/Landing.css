@@ -58,6 +58,13 @@
   animation-delay: 0.3s;
 }
 
+.hero-cta-skeleton {
+  width: 220px;
+  height: 46px;
+  border-radius: 6px; /* matches .hero-actions .btn-primary below */
+  flex-shrink: 0;
+}
+
 .hero-actions .btn-icon {
   margin-right: 8px;
 }
