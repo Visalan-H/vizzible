@@ -1,12 +1,39 @@
 const { z } = require('zod');
 const { waitUntil } = require('@vercel/functions');
 const axios = require('axios');
-const { Resvg } = require('@resvg/resvg-js');
-const fs = require('fs');
-const path = require('path');
+const React = require('react');
 const User = require('../models/User');
 const DailyActivity = require('../models/DailyActivity');
 const { syncUserActivity, isStale } = require('../services/sync');
+
+// OG image rendering: @vercel/og's ImageResponse (Satori + resvg under the
+// hood), NOT raw SVG + a bare @resvg/resvg-js call like an earlier version
+// of this file used. Every attempt to hand a custom font to resvg directly
+// - reading .woff2 from node_modules/@fontsource/..., a vercel.json
+// includeFiles glob, a plain committed backend/fonts/ folder, even a
+// base64 string embedded straight in JS source (so there was no separate
+// file at all for any bundler step to miss) - still rendered blank text in
+// production despite every one of those working locally, which stopped
+// looking like a "file didn't get bundled" problem and started looking
+// like something more fundamental about how that font data was reaching
+// resvg on Vercel's specific runtime. @vercel/og sidesteps the whole
+// question: it ships its own Noto Sans font built into the npm package
+// itself (not a loose asset needing separate bundling), so no custom font
+// handling is needed here at all.
+//
+// @vercel/og ships as an ES Module (dist/index.node.js), and this backend
+// is CommonJS (require()) - a plain top-level require('@vercel/og') throws
+// ERR_REQUIRE_ESM at runtime, since CJS can't load ESM synchronously.
+// Loaded via dynamic import() instead (the fix Node's own error message
+// points to), cached in a module-level promise so a warm function instance
+// only pays that import cost once, not once per request.
+let ImageResponseCtorPromise = null;
+function getImageResponseCtor() {
+  if (!ImageResponseCtorPromise) {
+    ImageResponseCtorPromise = import('@vercel/og').then((mod) => mod.ImageResponse);
+  }
+  return ImageResponseCtorPromise;
+}
 
 function escapeXml(unsafe) {
   if (!unsafe) return '';
@@ -22,31 +49,122 @@ function escapeXml(unsafe) {
   });
 }
 
-// resvg needs actual font bytes handed to it directly - it does not read
-// @font-face (external @import or embedded data-URI, tested both) out of
-// an SVG's own <style> block, and Vercel's serverless containers ship with
-// zero fonts installed by default, so falling back to "whatever's on the
-// system" silently renders every <text> element as nothing (shapes and
-// images still render fine - only glyphs vanish, which is exactly why this
-// bug was invisible locally on a dev machine that has fonts everywhere).
-// Read once at module load and reused across requests/invocations. Wrapped
-// in try/catch deliberately: a missing/renamed font file should degrade
-// the OG image (falls back to system-font behavior, i.e. the bug this is
-// fixing) rather than crash server startup for the entire API, since this
-// module is required by routes/profiles.js -> server.js.
-let OG_FONT_BUFFERS = [];
-try {
-  OG_FONT_BUFFERS = [
-    fs.readFileSync(
-      path.join(__dirname, '../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2')
-    ),
-    fs.readFileSync(
-      path.join(__dirname, '../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2')
-    ),
-  ];
-} catch (err) {
-  console.error('[og-image] Failed to load embedded font, text will fall back to system fonts (likely none on Vercel):', err.message);
+// --- Theme-equal intensity math ---------------------------------------
+// Duplicated from frontend/src/utils/platformColors.js (getLightModeTierColor)
+// rather than shared, since this is a separate CommonJS backend with no
+// shared module boundary with the Vite frontend. Keep both in sync if
+// either the platform hues or the dark-theme opacity curve ever changes.
+// See that file's comment block for the full rationale: dark theme's
+// opacity-over-black curve gets contrast "for free", and blending the
+// same hue toward this image's near-white canvas at matching opacities
+// can't get anywhere near the same WCAG contrast - so these tiers are
+// solid HSL-darkened shades instead, each solved to hit the identical
+// contrast ratio the dark-theme curve already achieves for that level.
+const OG_CANVAS = '#F2EDED'; // matches this image's own background, below
+const OG_DARK_REFERENCE_CANVAS = '#000000';
+const OG_DARK_OPACITIES = [0.25, 0.5, 0.75, 1];
+
+function ogSrgbToLinear(c) {
+  c /= 255;
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
+function ogHexToRgb(hex) {
+  hex = hex.replace('#', '');
+  return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+}
+function ogRelativeLuminance(hex) {
+  const [r, g, b] = ogHexToRgb(hex).map(ogSrgbToLinear);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function ogContrastRatio(hexA, hexB) {
+  const L1 = ogRelativeLuminance(hexA);
+  const L2 = ogRelativeLuminance(hexB);
+  const hi = Math.max(L1, L2);
+  const lo = Math.min(L1, L2);
+  return (hi + 0.05) / (lo + 0.05);
+}
+function ogBlend(fgHex, bgHex, alpha) {
+  const fg = ogHexToRgb(fgHex);
+  const bg = ogHexToRgb(bgHex);
+  const rgb = fg.map((c, i) => Math.round(bg[i] + (c - bg[i]) * alpha));
+  return '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('');
+}
+function ogHexToHsl(hex) {
+  const [r, g, b] = ogHexToRgb(hex).map((c) => c / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      default: h = (r - g) / d + 4;
+    }
+    h /= 6;
+  }
+  return [h, s, l];
+}
+function ogHslToHex(h, s, l) {
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = (c) => Math.round(c * 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+function ogDarkenToContrast(baseHex, bgHex, targetRatio) {
+  const [h, s] = ogHexToHsl(baseHex);
+  // Full [0,1] range, not capped at the base hue's own lightness: contrast
+  // against a near-white bg falls monotonically as l rises from 0 (black)
+  // to 1 (white) across the WHOLE range, regardless of where the base hue
+  // itself sits. Capping the search at the base hue assumed every tier
+  // needs darkening, but a hue that's already fairly dark (codeforces blue)
+  // can overshoot an early tier's target before any darkening at all -
+  // early tiers there need to search *lighter* than the base hue instead,
+  // or two adjacent tiers collapse into the identical color.
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const ratio = ogContrastRatio(ogHslToHex(h, s, mid), bgHex);
+    if (ratio < targetRatio) hi = mid;
+    else lo = mid;
+  }
+  return ogHslToHex(h, s, (lo + hi) / 2);
+}
+// Builds the 4-tier ramp (level 1-4) for one platform hue, each tier hitting
+// the same contrast ratio dark theme's opacity curve achieves at that level.
+function buildTierRamp(baseHex) {
+  return OG_DARK_OPACITIES.map((alpha) => {
+    const targetRatio = ogContrastRatio(ogBlend(baseHex, OG_DARK_REFERENCE_CANVAS, alpha), OG_DARK_REFERENCE_CANVAS);
+    return ogDarkenToContrast(baseHex, OG_CANVAS, targetRatio);
+  });
+}
+// Computed once at module load, not per-request - inputs are fixed hexes,
+// there's nothing request-specific to recompute.
+const RAMPS = {
+  github: buildTierRamp('#39d353'),
+  codeforces: buildTierRamp('#4a90d9'),
+  leetcode: buildTierRamp('#ffa116'),
+};
 
 // The sync promise is constructed (and starts running) before it's ever
 // passed to waitUntil() below - JS evaluates arguments before the call - so
@@ -143,11 +261,8 @@ async function updateProfile(req, res) {
   // them. Adding a handle should sync it now, not whenever it next looks
   // stale - syncUserActivity's in-flight dedupe keeps this safe even if a
   // page load's own activity fetches trigger a sync around the same time.
-  console.log(`[updateProfile] handle changed, calling waitUntil(syncUserActivity) for ${user.githubUsername}`);
   safeWaitUntil(
-    syncUserActivity(user)
-      .then(() => console.log(`[updateProfile] sync promise resolved for ${user.githubUsername}`))
-      .catch((err) => console.error('[updateProfile] Post-edit sync failed:', err))
+    syncUserActivity(user).catch((err) => console.error('[updateProfile] Post-edit sync failed:', err))
   );
 }
 
@@ -185,15 +300,9 @@ async function getActivity(req, res) {
 
   // Serve cached data immediately, refresh in the background if it's stale.
   // A failed refresh just leaves the existing data in place for next time.
-  const stale = isStale(user);
-  console.log(
-    `[getActivity] ${req.params.username} rows=${activity.length} lastSyncedAt=${user.lastSyncedAt} isStale=${stale}`
-  );
-  if (stale) {
+  if (isStale(user)) {
     safeWaitUntil(
-      syncUserActivity(user)
-        .then(() => console.log(`[getActivity] background sync resolved for ${user.githubUsername}`))
-        .catch((err) => console.error('[getActivity] Background sync failed:', err))
+      syncUserActivity(user).catch((err) => console.error('[getActivity] Background sync failed:', err))
     );
   }
 }
@@ -291,19 +400,10 @@ async function getProfileOGImage(req, res) {
       avatarDataUrl = `https://github.com/${user.githubUsername}.png`;
     }
 
-    const escapedUsername = escapeXml(user.githubUsername);
     let taglineStr = user.tagline || 'Combine your heatmaps from GitHub, LeetCode, and Codeforces.';
     if (taglineStr.length > 55) taglineStr = taglineStr.slice(0, 52) + '...';
-    const escapedTagline = escapeXml(taglineStr);
-
-
 
     const gridMax = Math.max(1, ...grid.map((d) => d.github + d.codeforces + d.leetcode));
-    const RAMPS = {
-      github: ['#c6ebd1', '#7bc96f', '#239a3b', '#196127'],
-      codeforces: ['#d5e5f5', '#8cb8e0', '#3b79b5', '#224a73'],
-      leetcode: ['#ffeacc', '#fcaa3d', '#d97706', '#8a4b00'],
-    };
     function tierIndex(total) {
       const ratio = total / gridMax;
       if (ratio > 0.75) return 3;
@@ -312,28 +412,28 @@ async function getProfileOGImage(req, res) {
       return 0;
     }
 
-    // Dynamic month labels & cell grid SVG
-    let cellsSVG = '';
+    // Cell descriptors (position + color) and month-label positions, same
+    // math as the old SVG version - just building plain data here instead
+    // of concatenating <rect>/<text> strings, since these get turned into
+    // absolutely-positioned <div>s below instead.
+    const cells = [];
     const monthLabels = [];
     let lastMonth = -1;
-    
     grid.forEach((day, index) => {
       const col = Math.floor(index / 7);
       const row = index % 7;
-      const x = 40 + col * 24.3; // Spread slightly to use 1120px width
+      const x = 40 + col * 24.3;
       const y = 330 + row * 24.3;
-      
-      // Collect month labels at column transitions
+
       if (row === 0) {
         const date = new Date(day.date);
         const month = date.getMonth();
         if (month !== lastMonth) {
-          const monthName = date.toLocaleString('en-US', { month: 'short' });
-          monthLabels.push({ text: monthName, x });
+          monthLabels.push({ text: date.toLocaleString('en-US', { month: 'short' }), x });
           lastMonth = month;
         }
       }
-      
+
       let fillColor = 'rgba(0, 0, 0, 0.05)';
       const totalVal = day.github + day.codeforces + day.leetcode;
       if (totalVal > 0) {
@@ -345,130 +445,81 @@ async function getProfileOGImage(req, res) {
               : 'leetcode';
         fillColor = RAMPS[dominant][tierIndex(totalVal)];
       }
-      cellsSVG += `  <rect x="${x}" y="${y}" width="21" height="21" rx="3.5" fill="${fillColor}" />\n`;
+      cells.push({ x, y, fillColor });
     });
 
-    let monthsSVG = '';
-    monthLabels.forEach((label) => {
-      monthsSVG += `<text x="${label.x}" y="315" class="font-mono" font-size="16" fill="#666666" font-weight="500">${label.text}</text>\n`;
-    });
+    const e = React.createElement;
 
-    const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <clipPath id="avatar-clip">
-      <circle cx="83" cy="75" r="40" />
-    </clipPath>
-  </defs>
+    // Satori (the engine behind ImageResponse) requires any element with
+    // more than one child to declare display: 'flex', even when every
+    // child is taken out of flow via position: 'absolute' for exact pixel
+    // placement - that's why it shows up on every multi-child node below,
+    // not just the ones actually using flex layout for something.
+    const abs = (extra) => ({ position: 'absolute', display: 'flex', ...extra });
 
-  <style>
-    .font-mono {
-      font-family: 'JetBrains Mono', monospace;
+    function statBlock(x, value, label) {
+      return e(
+        'div',
+        { key: `stat-${x}`, style: abs({ left: x, top: 165, width: 260, flexDirection: 'column', alignItems: 'center' }) },
+        e('div', { key: 'v', style: { display: 'flex', fontSize: 36, fontWeight: 800, color: '#000000' } }, String(value)),
+        e('div', { key: 'l', style: { display: 'flex', fontSize: 15, fontWeight: 600, color: '#555555', letterSpacing: 0.5, marginTop: 4 } }, label)
+      );
     }
-  </style>
 
-  <!-- Solid Canvas Background matching site theme exactly -->
-  <rect width="1200" height="630" fill="#F2EDED" stroke="#000000" stroke-width="4" />
+    function platformKey(x, color, label) {
+      return e(
+        'div',
+        { key: `pk-${x}`, style: abs({ left: x, top: 548, alignItems: 'center' }) },
+        e('div', { key: 'sw', style: { display: 'flex', width: 16, height: 16, borderRadius: 3, background: color, marginRight: 10 } }),
+        e('div', { key: 'lb', style: { display: 'flex', fontSize: 15, fontWeight: 700, color: '#555555' } }, label)
+      );
+    }
 
-  <!-- Profile Info Header -->
-  <circle cx="83" cy="75" r="42" fill="none" stroke="rgba(0, 0, 0, 0.15)" stroke-width="2" />
-  <image href="${avatarDataUrl}" x="41" y="33" width="84" height="84" clip-path="url(#avatar-clip)" />
+    const element = e(
+      'div',
+      { style: { width: 1200, height: 630, display: 'flex', position: 'relative', background: '#F2EDED', border: '4px solid #000000' } },
+      // Avatar ring + image
+      e('div', { key: 'ring', style: abs({ left: 41, top: 33, width: 84, height: 84, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.15)' }) }),
+      e('img', { key: 'avatar', src: avatarDataUrl, width: 84, height: 84, style: abs({ left: 41, top: 33, width: 84, height: 84, borderRadius: '50%' }) }),
+      // Username + tagline
+      e('div', { key: 'username', style: abs({ left: 145, top: 38, fontSize: 40, fontWeight: 800, color: '#000000' }) }, user.githubUsername),
+      e('div', { key: 'tagline', style: abs({ left: 145, top: 88, fontSize: 22, fontWeight: 500, color: '#333333' }) }, taglineStr),
+      // Stat dividers
+      e('div', { key: 'div1', style: abs({ left: 320, top: 170, width: 1.5, height: 60, background: 'rgba(0,0,0,0.15)' }) }),
+      e('div', { key: 'div2', style: abs({ left: 600, top: 170, width: 1.5, height: 60, background: 'rgba(0,0,0,0.15)' }) }),
+      e('div', { key: 'div3', style: abs({ left: 880, top: 170, width: 1.5, height: 60, background: 'rgba(0,0,0,0.15)' }) }),
+      // Stats
+      statBlock(40, currentStreak, 'CURRENT STREAK'),
+      statBlock(320, longestStreak, 'LONGEST STREAK'),
+      statBlock(600, totalSubmissions, 'TOTAL ACTIVITY'),
+      statBlock(880, activeDaysCount, 'ACTIVE DAYS'),
+      // Month labels
+      ...monthLabels.map((m, i) => e('div', { key: `month-${i}`, style: abs({ left: m.x, top: 298, fontSize: 14, color: '#666666', fontWeight: 500 }) }, m.text)),
+      // Heatmap cells
+      ...cells.map((c, i) => e('div', { key: `cell-${i}`, style: abs({ left: c.x, top: c.y, width: 21, height: 21, borderRadius: 3.5, background: c.fillColor }) })),
+      // Legend: Less [empty][4 github tiers] More
+      e('div', { key: 'less', style: abs({ left: 40, top: 548, fontSize: 14, fontWeight: 600, color: '#666666' }) }, 'Less'),
+      e('div', { key: 'sw0', style: abs({ left: 95, top: 545, width: 22, height: 22, borderRadius: 3.5, background: 'rgba(0,0,0,0.05)' }) }),
+      e('div', { key: 'sw1', style: abs({ left: 123, top: 545, width: 22, height: 22, borderRadius: 3.5, background: RAMPS.github[0] }) }),
+      e('div', { key: 'sw2', style: abs({ left: 151, top: 545, width: 22, height: 22, borderRadius: 3.5, background: RAMPS.github[1] }) }),
+      e('div', { key: 'sw3', style: abs({ left: 179, top: 545, width: 22, height: 22, borderRadius: 3.5, background: RAMPS.github[2] }) }),
+      e('div', { key: 'sw4', style: abs({ left: 207, top: 545, width: 22, height: 22, borderRadius: 3.5, background: RAMPS.github[3] }) }),
+      e('div', { key: 'more', style: abs({ left: 242, top: 548, fontSize: 14, fontWeight: 600, color: '#666666' }) }, 'More'),
+      // Platform key
+      platformKey(760, RAMPS.github[3], 'GitHub'),
+      platformKey(870, RAMPS.codeforces[3], 'Codeforces'),
+      platformKey(1016, RAMPS.leetcode[3], 'LeetCode'),
+      // Brand
+      e('div', { key: 'brand', style: abs({ right: 40, top: 40, fontSize: 26, fontWeight: 800, color: '#000000' }) }, 'vizzible.vercel.app')
+    );
 
-  <text x="145" y="68" class="font-mono" font-size="42" font-weight="800" fill="#000000" letter-spacing="-1px">${escapedUsername}</text>
-  <text x="145" y="105" class="font-mono" font-size="24" font-weight="500" fill="#333333">${escapedTagline}</text>
-
-  <!-- Clean Stats Row (No Box) -->
-  <g transform="translate(40, 165)">
-    <!-- Dividers -->
-    <line x1="280" y1="5" x2="280" y2="65" stroke="rgba(0, 0, 0, 0.15)" stroke-width="1.5" />
-    <line x1="560" y1="5" x2="560" y2="65" stroke="rgba(0, 0, 0, 0.15)" stroke-width="1.5" />
-    <line x1="840" y1="5" x2="840" y2="65" stroke="rgba(0, 0, 0, 0.15)" stroke-width="1.5" />
-    
-    <!-- Current Streak -->
-    <text x="140" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${currentStreak}</text>
-    <text x="140" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">CURRENT STREAK</text>
-    
-    <!-- Longest Streak -->
-    <text x="420" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${longestStreak}</text>
-    <text x="420" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">LONGEST STREAK</text>
-    
-    <!-- Total Activity -->
-    <text x="700" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${totalSubmissions}</text>
-    <text x="700" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">TOTAL ACTIVITY</text>
-    
-    <!-- Active Days -->
-    <text x="980" y="38" class="font-mono" font-size="38" font-weight="800" fill="#000000" text-anchor="middle">${activeDaysCount}</text>
-    <text x="980" y="68" class="font-mono" font-size="18" font-weight="600" fill="#555555" text-anchor="middle" letter-spacing="0.5px">ACTIVE DAYS</text>
-  </g>
-
-  <!-- Month labels -->
-  ${monthsSVG}
-  
-  <!-- Cells grid -->
-  <g>
-    ${cellsSVG}
-  </g>
-
-  <!-- Legend -->
-  <g transform="translate(40, 545)">
-    <text x="0" y="16" class="font-mono" font-size="16" font-weight="600" fill="#666666">Less</text>
-    <rect x="55" y="0" width="22" height="22" rx="3.5" fill="rgba(0, 0, 0, 0.05)" />
-    <rect x="83" y="0" width="22" height="22" rx="3.5" fill="#c6ebd1" />
-    <rect x="111" y="0" width="22" height="22" rx="3.5" fill="#7bc96f" />
-    <rect x="139" y="0" width="22" height="22" rx="3.5" fill="#239a3b" />
-    <rect x="167" y="0" width="22" height="22" rx="3.5" fill="#196127" />
-    <text x="202" y="16" class="font-mono" font-size="16" font-weight="600" fill="#666666">More</text>
-  </g>
-
-  <!-- Platforms Key -->
-  <g transform="translate(760, 545)">
-    <rect x="0" y="3" width="16" height="16" rx="3" fill="#196127" />
-    <text x="26" y="16" class="font-mono" font-size="16" font-weight="700" fill="#555555">GitHub</text>
-    
-    <rect x="110" y="3" width="16" height="16" rx="3" fill="#3b79b5" />
-    <text x="136" y="16" class="font-mono" font-size="16" font-weight="700" fill="#555555">Codeforces</text>
-    
-    <rect x="256" y="3" width="16" height="16" rx="3" fill="#d97706" />
-    <text x="282" y="16" class="font-mono" font-size="16" font-weight="700" fill="#555555">LeetCode</text>
-  </g>
-
-  <!-- Brand branding at the top-right for clean space -->
-  <text x="1160" y="68" class="font-mono" font-size="32" font-weight="800" fill="#000000" letter-spacing="-1px" text-anchor="end">vizzible.vercel.app</text>
-</svg>`;
+    const ImageResponse = await getImageResponseCtor();
+    const imageResponse = new ImageResponse(element, { width: 1200, height: 630 });
+    const arrayBuffer = await imageResponse.arrayBuffer();
 
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-
-    // WhatsApp's crawler (and several other unfurlers) silently ignore an
-    // SVG og:image - no error, just a text-only preview with no thumbnail
-    // - so this is rasterized to PNG rather than sent as-is. resvg (not
-    // sharp) specifically: it's the same SVG-to-PNG rasterizer Vercel's own
-    // @vercel/og tooling uses, and it's a much smaller native dependency
-    // than sharp+libvips - sharp has an open, unresolved issue as of mid-
-    // 2026 (lovell/sharp#4543) where Vercel's file tracer fails to bundle
-    // its nested platform binary for non-Next.js frameworks like this one.
-    //
-    // Font is handed to resvg directly via font.fontBuffers rather than
-    // relying on the <style> block above or any font installed on the host
-    // - confirmed by direct testing that resvg does not read @font-face
-    // from SVG <style> at all (neither an external @import nor an embedded
-    // base64 data-URI actually loads), and Vercel's serverless containers
-    // have no fonts installed, so without this every <text> element
-    // renders as nothing - shapes and the avatar <image> still render fine,
-    // only glyphs vanish, which is why this passed local testing (a dev
-    // machine has plenty of fonts) but broke in production.
-    // loadSystemFonts: false also skips resvg's filesystem font-scan
-    // entirely, which is pure overhead now that the font we need is
-    // supplied directly - faster cold starts, and deterministic output
-    // that can't drift based on whatever happens to be on the host.
-    const resvg = new Resvg(svg, {
-      font: {
-        loadSystemFonts: false,
-        fontBuffers: OG_FONT_BUFFERS,
-        defaultFontFamily: 'JetBrains Mono',
-      },
-    });
-    const pngBuffer = resvg.render().asPng();
-    return res.send(pngBuffer);
+    return res.send(Buffer.from(arrayBuffer));
   } catch (err) {
     console.error('Error generating OG image:', err);
     return res.status(500).send('Error generating image');

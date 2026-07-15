@@ -2,7 +2,7 @@ import { cloneElement, memo, useEffect, useMemo, useRef } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import { useTheme } from '../hooks/ThemeContext';
 import { useHoverCapable } from '../hooks/useHoverCapable';
-import { PLATFORM_COLORS, dominantPlatform } from '../utils/platformColors';
+import { PLATFORM_COLORS, dominantPlatform, getLightModeTierColor } from '../utils/platformColors';
 import 'react-calendar-heatmap/dist/styles.css';
 import './Heatmap.css';
 
@@ -110,14 +110,18 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
           transformDayElement={(element, value) => {
             const level = intensity(value?.count, max);
 
-            // Adjust opacity scale for light theme to maintain high-contrast visibility
+            // Dark theme keeps its existing opacity curve unchanged. Light
+            // theme (and, by the same math, the OG image) swaps the fixed
+            // hue for a level-appropriate darkened shade instead of opacity -
+            // see getLightModeTierColor for why opacity alone can't get
+            // comparable contrast against a near-white canvas.
             let fillOpacity;
             if (level === 0) {
-              fillOpacity = isLight ? 0.08 : 0.08;
+              fillOpacity = 0.08;
+            } else if (isLight) {
+              fillOpacity = 1;
             } else {
-              fillOpacity = isLight
-                ? 0.55 + (level - 1) * 0.15 // 0.55, 0.70, 0.85, 1.00
-                : level / 4;                // 0.25, 0.50, 0.75, 1.00
+              fillOpacity = level / 4; // 0.25, 0.50, 0.75, 1.00
             }
 
             // Cells outside the selected month fade out instead of being
@@ -139,7 +143,12 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
                 ? PLATFORM_COLORS[dominantPlatform(value)]
                 : color;
 
-            return cloneElement(element, { style: { fill: cellColor, fillOpacity }, 'data-date': value?.date });
+            // Only darken when there's an actual hue to darken - level 0
+            // (idle) cells keep using the raw color at low opacity, same as
+            // before, in both themes.
+            const displayColor = isLight && level > 0 ? getLightModeTierColor(cellColor, level) : cellColor;
+
+            return cloneElement(element, { style: { fill: displayColor, fillOpacity }, 'data-date': value?.date });
           }}
         />
       </div>

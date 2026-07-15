@@ -259,16 +259,6 @@
   box-sizing: border-box;
 }
 
-.pipeline-source.github { border-left: 3px solid #39d353; }
-.pipeline-source.leetcode { border-left: 3px solid #ffa116; }
-.pipeline-source.codeforces { border-left: 3px solid #4a90d9; }
-
-.source-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: var(--rounded-full);
-  background: var(--success);
-}
 
 .source-name {
   color: var(--text-mute);

@@ -2,6 +2,13 @@
   "rewrites": [
     {
       "source": "/:username",
+      "missing": [
+        { "type": "header", "key": "sec-fetch-mode" }
+      ],
+      "destination": "https://vizzible-api.vercel.app/api/profiles/:username/meta"
+    },
+    {
+      "source": "/:username",
       "has": [
         {
           "type": "header",

@@ -1,47 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import './SideDecorations.css';
 
-const MOCK_EVENTS = [
-  { platform: 'github', text: '+3 commits to main' },
-  { platform: 'leetcode', text: 'Daily Challenge solved' },
-  { platform: 'codeforces', text: 'Accepted on Problem D' },
-  { platform: 'github', text: 'Created PR #14' },
-  { platform: 'leetcode', text: 'Streak reached 18 days' },
-  { platform: 'codeforces', text: 'Expert tier reached' },
-  { platform: 'github', text: 'Merged branch feat/auth' },
-  { platform: 'leetcode', text: 'Solved Hard problem' },
-];
-
 export default function SideDecorations() {
-  const [events, setEvents] = useState([
+  const events = [
     { id: 1, platform: 'github', text: 'contribution graph synced' },
     { id: 2, platform: 'leetcode', text: 'daily progress synced' },
     { id: 3, platform: 'codeforces', text: 'contest rating updated' }
-  ]);
+  ];
 
-  // Feed animation
-  useEffect(() => {
-    let idCounter = 4;
-    const interval = setInterval(() => {
-      const nextEvent = MOCK_EVENTS[Math.floor(Math.random() * MOCK_EVENTS.length)];
-      setEvents(prev => {
-        const updated = [...prev, { id: idCounter++, ...nextEvent }];
-        if (updated.length > 4) {
-          updated.shift();
-        }
-        return updated;
-      });
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Simple 2D grid cells for mini heatmap
+  // Simple 2D grid cells for mini heatmap: 13 weeks * 7 days = 91 cells
   const gridCells = [
-    1, 3, 0, 2,
-    0, 1, 4, 0,
-    2, 0, 2, 3,
-    4, 1, 3, 0
+    0, 1, 0, 2, 0, 0, 1,
+    3, 0, 0, 1, 2, 0, 0,
+    0, 4, 1, 0, 0, 2, 1,
+    0, 0, 3, 0, 1, 0, 0,
+    2, 1, 0, 0, 4, 0, 2,
+    0, 0, 1, 3, 0, 0, 0,
+    1, 2, 0, 0, 1, 0, 3,
+    0, 0, 4, 2, 0, 1, 0,
+    0, 1, 0, 0, 3, 0, 2,
+    1, 0, 2, 0, 0, 4, 0,
+    0, 3, 1, 0, 1, 0, 0,
+    2, 0, 0, 4, 0, 2, 1,
+    0, 1, 3, 0, 0, 1, 0
   ];
 
   return (
@@ -71,8 +52,12 @@ export default function SideDecorations() {
           </div>
 
           <div className="feed-list">
-            {events.map((e) => (
-              <div key={e.id} className="feed-item">
+            {events.map((e, idx) => (
+              <div 
+                key={e.id} 
+                className="feed-item"
+                style={{ animationDelay: `${0.3 + idx * 0.12}s` }}
+              >
                 <span className={`feed-dot platform-${e.platform}`}></span>
                 <span className="feed-text">{e.text}</span>
               </div>
@@ -95,7 +80,11 @@ export default function SideDecorations() {
 
           <div className="mini-heatmap">
             {gridCells.map((level, idx) => (
-              <div key={idx} className={`heatmap-cell level-${level}`} />
+              <div 
+                key={idx} 
+                className={`heatmap-cell level-${level}`} 
+                style={{ animationDelay: `${0.35 + (idx % 7) * 0.04 + Math.floor(idx / 7) * 0.03}s` }}
+              />
             ))}
           </div>
         </div>

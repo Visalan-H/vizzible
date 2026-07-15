@@ -22,7 +22,6 @@ async function fetchCodeforcesActivity(handle) {
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    console.log(`[codeforces] fetching for handle=${handle} from=${from}`);
     const { data } = await axios.get('https://codeforces.com/api/user.status', {
       params: { handle, from, count: PAGE_SIZE },
     });

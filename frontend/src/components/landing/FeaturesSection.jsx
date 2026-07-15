@@ -23,17 +23,14 @@ export default function FeaturesSection() {
             <div className="pipeline-body">
               <div className="pipeline-sources">
                 <div className="pipeline-source github">
-                  <span className="source-dot"></span>
                   <span className="source-name font-mono">github</span>
                   <span className="source-status font-mono">+12</span>
                 </div>
                 <div className="pipeline-source leetcode">
-                  <span className="source-dot"></span>
                   <span className="source-name font-mono">leetcode</span>
                   <span className="source-status font-mono">+3</span>
                 </div>
                 <div className="pipeline-source codeforces">
-                  <span className="source-dot"></span>
                   <span className="source-name font-mono">codeforces</span>
                   <span className="source-status font-mono">+8</span>
                 </div>

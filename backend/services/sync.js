@@ -50,11 +50,9 @@ const inFlightSyncs = new Map();
 function syncUserActivity(user) {
   const key = user._id.toString();
   if (inFlightSyncs.has(key)) {
-    console.log(`[sync] reusing in-flight sync for ${user.githubUsername}`);
     return inFlightSyncs.get(key);
   }
 
-  console.log(`[sync] triggering sync for ${user.githubUsername}`);
   const promise = doSync(user).finally(() => inFlightSyncs.delete(key));
   inFlightSyncs.set(key, promise);
   return promise;
@@ -63,27 +61,16 @@ function syncUserActivity(user) {
 // Syncs whichever platforms succeed; one platform failing doesn't block the others,
 // and a failed sync just leaves the existing data in place for the next attempt.
 async function doSync(user) {
-  console.log(
-    `[sync] starting for ${user.githubUsername} (cf=${user.codeforcesHandle ?? 'none'}, lc=${user.leetcodeUsername ?? 'none'})`
-  );
-
   const results = await Promise.allSettled([
-    fetchGithubActivity(user.githubUsername, decrypt(user.githubAccessToken)).then((days) => {
-      console.log(`[sync] github ok for ${user.githubUsername}: ${days.length} days`);
-      return saveActivity(user._id, 'github', days);
-    }),
+    fetchGithubActivity(user.githubUsername, decrypt(user.githubAccessToken)).then((days) =>
+      saveActivity(user._id, 'github', days)
+    ),
     user.codeforcesHandle
-      ? fetchCodeforcesActivity(user.codeforcesHandle).then((days) => {
-          console.log(`[sync] codeforces ok for ${user.codeforcesHandle}: ${days.length} days`);
-          return saveActivity(user._id, 'codeforces', days);
-        })
-      : (console.log(`[sync] codeforces skipped for ${user.githubUsername}: no handle set`), Promise.resolve()),
+      ? fetchCodeforcesActivity(user.codeforcesHandle).then((days) => saveActivity(user._id, 'codeforces', days))
+      : Promise.resolve(),
     user.leetcodeUsername
-      ? fetchLeetcodeActivity(user.leetcodeUsername).then((days) => {
-          console.log(`[sync] leetcode ok for ${user.leetcodeUsername}: ${days.length} days`);
-          return saveActivity(user._id, 'leetcode', days);
-        })
-      : (console.log(`[sync] leetcode skipped for ${user.githubUsername}: no username set`), Promise.resolve()),
+      ? fetchLeetcodeActivity(user.leetcodeUsername).then((days) => saveActivity(user._id, 'leetcode', days))
+      : Promise.resolve(),
   ]);
 
   const labels = ['github', 'codeforces', 'leetcode'];
@@ -96,7 +83,6 @@ async function doSync(user) {
 
   user.lastSyncedAt = new Date();
   await user.save();
-  console.log(`[sync] finished for ${user.githubUsername}, lastSyncedAt=${user.lastSyncedAt.toISOString()}`);
 }
 
 module.exports = { syncUserActivity, isStale };

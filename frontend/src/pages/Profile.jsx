@@ -280,11 +280,6 @@ export default function Profile() {
       <div className="activity-summary-bar">
         <p className="activity-total">
           {total} activity {total === 1 ? 'point' : 'points'} in {year}
-          {streaks.current > 0 && (
-            <span className="streak-inline" style={{ color: PLATFORM_COLORS[platform] }}>
-              · {streaks.current} day streak
-            </span>
-          )}
         </p>
         <p className="activity-hint">
           Click a month label to see stats · {hoverCapable ? 'hover' : 'tap'} a day for details
