@@ -2,6 +2,8 @@ const { z } = require('zod');
 const { waitUntil } = require('@vercel/functions');
 const axios = require('axios');
 const { Resvg } = require('@resvg/resvg-js');
+const fs = require('fs');
+const path = require('path');
 const User = require('../models/User');
 const DailyActivity = require('../models/DailyActivity');
 const { syncUserActivity, isStale } = require('../services/sync');
@@ -18,6 +20,32 @@ function escapeXml(unsafe) {
       default: return c;
     }
   });
+}
+
+// resvg needs actual font bytes handed to it directly - it does not read
+// @font-face (external @import or embedded data-URI, tested both) out of
+// an SVG's own <style> block, and Vercel's serverless containers ship with
+// zero fonts installed by default, so falling back to "whatever's on the
+// system" silently renders every <text> element as nothing (shapes and
+// images still render fine - only glyphs vanish, which is exactly why this
+// bug was invisible locally on a dev machine that has fonts everywhere).
+// Read once at module load and reused across requests/invocations. Wrapped
+// in try/catch deliberately: a missing/renamed font file should degrade
+// the OG image (falls back to system-font behavior, i.e. the bug this is
+// fixing) rather than crash server startup for the entire API, since this
+// module is required by routes/profiles.js -> server.js.
+let OG_FONT_BUFFERS = [];
+try {
+  OG_FONT_BUFFERS = [
+    fs.readFileSync(
+      path.join(__dirname, '../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2')
+    ),
+    fs.readFileSync(
+      path.join(__dirname, '../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2')
+    ),
+  ];
+} catch (err) {
+  console.error('[og-image] Failed to load embedded font, text will fall back to system fonts (likely none on Vercel):', err.message);
 }
 
 // The sync promise is constructed (and starts running) before it's ever
@@ -333,10 +361,8 @@ async function getProfileOGImage(req, res) {
   </defs>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
-    
     .font-mono {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-family: 'JetBrains Mono', monospace;
     }
   </style>
 
@@ -420,7 +446,27 @@ async function getProfileOGImage(req, res) {
     // than sharp+libvips - sharp has an open, unresolved issue as of mid-
     // 2026 (lovell/sharp#4543) where Vercel's file tracer fails to bundle
     // its nested platform binary for non-Next.js frameworks like this one.
-    const resvg = new Resvg(svg);
+    //
+    // Font is handed to resvg directly via font.fontBuffers rather than
+    // relying on the <style> block above or any font installed on the host
+    // - confirmed by direct testing that resvg does not read @font-face
+    // from SVG <style> at all (neither an external @import nor an embedded
+    // base64 data-URI actually loads), and Vercel's serverless containers
+    // have no fonts installed, so without this every <text> element
+    // renders as nothing - shapes and the avatar <image> still render fine,
+    // only glyphs vanish, which is why this passed local testing (a dev
+    // machine has plenty of fonts) but broke in production.
+    // loadSystemFonts: false also skips resvg's filesystem font-scan
+    // entirely, which is pure overhead now that the font we need is
+    // supplied directly - faster cold starts, and deterministic output
+    // that can't drift based on whatever happens to be on the host.
+    const resvg = new Resvg(svg, {
+      font: {
+        loadSystemFonts: false,
+        fontBuffers: OG_FONT_BUFFERS,
+        defaultFontFamily: 'JetBrains Mono',
+      },
+    });
     const pngBuffer = resvg.render().asPng();
     return res.send(pngBuffer);
   } catch (err) {
