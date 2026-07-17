@@ -31,27 +31,37 @@ export function dominantPlatform(day) {
 
 // --- Theme-equal intensity math -------------------------------------------
 //
-// Dark theme represents activity level by opacity of a platform's raw hue
-// over a pure-black canvas (25/50/75/100%). That looks great because
-// contrast against black grows very cheaply. Blending that *same* hue
-// toward the near-white canvas (#F2EDED, see --canvas in index.css) at
-// matching opacities can't get anywhere near the same contrast - there's
-// just no headroom above white - which is why light mode's activity levels
-// read as washed out, and why the OG image (rendered on the same near-
-// white canvas, see backend/controllers/profileController.js) had the
-// identical problem.
+// Both themes render a level 1-4 day as a SOLID shade of the platform's hue
+// (no opacity involved), each solved by binary search on HSL lightness to
+// hit a target WCAG 2.0 contrast ratio against that theme's own canvas.
 //
-// Fix: instead of opacity, light-mode/OG tiers are solid HSL-darkened
-// shades of the same hue, each solved by binary search on lightness to
-// hit the exact WCAG 2.0 contrast ratio (the same formula browsers/axe use
-// for accessibility checks) that dark theme's opacity curve already
-// achieves for that tier. A "level 3" day ends up equally intense
-// (identical contrast ratio against its own canvas) whichever theme it's
-// viewed in, without introducing new colors or touching dark mode's look
-// at all - only light mode's numbers change.
+// Previously dark theme used opacity (25/50/75/100%) over black instead of
+// solving for a ratio directly, and light theme reverse-derived its target
+// ratio from that opacity curve. That looked fine at level 4 (solid raw hue
+// either way), but low opacity over a BLACK canvas crushes luminance almost
+// to zero - e.g. 25% github-green over black lands at luminance ~0.03,
+// which is indistinguishable from the canvas at a glance even though its
+// contrast *ratio* is "correct". Near white the same ratio lands at a much
+// higher, clearly-visible luminance, so low levels looked fine in light
+// mode and nearly invisible in dark mode - same ratio, opposite outcome,
+// because WCAG ratio isn't perceptually uniform near either extreme.
+//
+// Fix: define target ratios directly, on a shared curve (TIER_FRACTIONS),
+// anchored to the raw hue's own contrast against BLACK (every platform hue
+// here is designed to look good on black - see PLATFORM_COLORS - so that's
+// the natural ceiling). Both themes solve for a solid color at that exact
+// ratio against their own canvas: dark theme searches from black outward
+// (ratio rises with lightness), light theme searches from the light canvas
+// inward (ratio falls with lightness). A "level 3" day ends up an
+// identical target ratio, and thus comparable visible weight, in either
+// theme, without opacity's tendency to crush chroma near black.
 const LIGHT_CANVAS = '#F2EDED';
 const DARK_CANVAS = '#000000';
-const DARK_OPACITIES = [0.25, 0.5, 0.75, 1]; // dark theme's existing level 1-4 curve
+// How far each level climbs from ratio 1 (indistinguishable from canvas)
+// to the raw hue's full natural ratio against black. Floor raised from the
+// old opacity curve's implicit 0.25 to 0.35 so level 1 stays visible
+// instead of nearly disappearing into a black canvas.
+const TIER_FRACTIONS = [0.35, 0.55, 0.8, 1];
 
 function srgbToLinear(c) {
   c /= 255;
@@ -75,13 +85,6 @@ function contrastRatio(hexA, hexB) {
   const hi = Math.max(L1, L2);
   const lo = Math.min(L1, L2);
   return (hi + 0.05) / (lo + 0.05);
-}
-
-function blend(fgHex, bgHex, alpha) {
-  const fg = hexToRgb(fgHex);
-  const bg = hexToRgb(bgHex);
-  const rgb = fg.map((c, i) => Math.round(bg[i] + (c - bg[i]) * alpha));
-  return '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('');
 }
 
 function hexToHsl(hex) {
@@ -148,6 +151,32 @@ function darkenToContrast(baseHex, bgHex, targetRatio) {
   return hslToHex(h, s, (lo + hi) / 2);
 }
 
+// Mirror image of darkenToContrast for a canvas darker than any candidate
+// color (i.e. near-black): contrast ratio there RISES as lightness rises
+// (there's no headroom below the canvas, so every candidate is the "lighter"
+// side of the ratio), the opposite relationship from a near-white canvas.
+// Using darkenToContrast's hi/lo direction against a black canvas would
+// converge to the wrong end of the range.
+function lightenToContrast(baseHex, bgHex, targetRatio) {
+  const [h, s] = hexToHsl(baseHex);
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const ratio = contrastRatio(hslToHex(h, s, mid), bgHex);
+    if (ratio < targetRatio) lo = mid;
+    else hi = mid;
+  }
+  return hslToHex(h, s, (lo + hi) / 2);
+}
+
+// Shared by both getters below: the ratio a given level should hit, on the
+// curve anchored to baseHex's own natural contrast against black.
+function targetRatioFor(baseHex, level) {
+  const fullRatio = contrastRatio(baseHex, DARK_CANVAS);
+  return 1 + (fullRatio - 1) * TIER_FRACTIONS[level - 1];
+}
+
 // level: 1-4. Memoized since the full input space is tiny (3 platform hues
 // x 4 levels = 12 combinations, ever) - no reason to re-run 4 binary
 // searches worth of math on every cell, every render.
@@ -156,12 +185,19 @@ export function getLightModeTierColor(baseHex, level) {
   const key = `${baseHex}-${level}`;
   if (lightTierCache.has(key)) return lightTierCache.get(key);
 
-  // Re-derive dark theme's own target ratio for this tier/hue combo, rather
-  // than a hardcoded number - if the dark-mode opacity curve above is ever
-  // tuned, light mode and the OG image stay in sync automatically.
-  const targetRatio = contrastRatio(blend(baseHex, DARK_CANVAS, DARK_OPACITIES[level - 1]), DARK_CANVAS);
-  const result = darkenToContrast(baseHex, LIGHT_CANVAS, targetRatio);
+  const result = darkenToContrast(baseHex, LIGHT_CANVAS, targetRatioFor(baseHex, level));
 
   lightTierCache.set(key, result);
+  return result;
+}
+
+const darkTierCache = new Map();
+export function getDarkModeTierColor(baseHex, level) {
+  const key = `${baseHex}-${level}`;
+  if (darkTierCache.has(key)) return darkTierCache.get(key);
+
+  const result = lightenToContrast(baseHex, DARK_CANVAS, targetRatioFor(baseHex, level));
+
+  darkTierCache.set(key, result);
   return result;
 }

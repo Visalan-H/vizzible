@@ -2,7 +2,7 @@ import { cloneElement, memo, useEffect, useMemo, useRef } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import { useTheme } from '../hooks/ThemeContext';
 import { useHoverCapable } from '../hooks/useHoverCapable';
-import { PLATFORM_COLORS, dominantPlatform, getLightModeTierColor } from '../utils/platformColors';
+import { PLATFORM_COLORS, dominantPlatform, getLightModeTierColor, getDarkModeTierColor } from '../utils/platformColors';
 import 'react-calendar-heatmap/dist/styles.css';
 import './Heatmap.css';
 
@@ -110,19 +110,13 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
           transformDayElement={(element, value) => {
             const level = intensity(value?.count, max);
 
-            // Dark theme keeps its existing opacity curve unchanged. Light
-            // theme (and, by the same math, the OG image) swaps the fixed
-            // hue for a level-appropriate darkened shade instead of opacity -
-            // see getLightModeTierColor for why opacity alone can't get
-            // comparable contrast against a near-white canvas.
-            let fillOpacity;
-            if (level === 0) {
-              fillOpacity = 0.08;
-            } else if (isLight) {
-              fillOpacity = 1;
-            } else {
-              fillOpacity = level / 4; // 0.25, 0.50, 0.75, 1.00
-            }
+            // Both themes render level 1-4 as a solid, level-appropriate
+            // shade of the hue (see getLightModeTierColor / getDarkModeTierColor
+            // for why opacity over black crushes low levels toward
+            // invisible while the same opacity over near-white doesn't).
+            // Only idle (level 0) cells still use flat low opacity on the
+            // raw color, same as before, in both themes.
+            let fillOpacity = level === 0 ? 0.08 : 1;
 
             // Cells outside the selected month fade out instead of being
             // hidden - keeps the shape of the full year visible for context
@@ -143,10 +137,13 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
                 ? PLATFORM_COLORS[dominantPlatform(value)]
                 : color;
 
-            // Only darken when there's an actual hue to darken - level 0
+            // Only tier-shade when there's an actual hue to shade - level 0
             // (idle) cells keep using the raw color at low opacity, same as
             // before, in both themes.
-            const displayColor = isLight && level > 0 ? getLightModeTierColor(cellColor, level) : cellColor;
+            let displayColor = cellColor;
+            if (level > 0) {
+              displayColor = isLight ? getLightModeTierColor(cellColor, level) : getDarkModeTierColor(cellColor, level);
+            }
 
             return cloneElement(element, { style: { fill: displayColor, fillOpacity }, 'data-date': value?.date });
           }}

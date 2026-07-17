@@ -9,6 +9,7 @@ import YearSelector from '../components/YearSelector';
 import ActivityBoard from '../components/ActivityBoard';
 import StreakCard from '../components/StreakCard';
 import PlatformLegend from '../components/PlatformLegend';
+import ShareButton from '../components/ShareButton';
 import ProfileLinks, { ICON_MAP } from '../components/ProfileLinks';
 import { computeStreaks } from '../utils/streaks';
 import { PLATFORM_COLORS, PLATFORM_KEY } from '../utils/platformColors';
@@ -178,6 +179,18 @@ export default function Profile() {
   const handlesMissing = !profile.codeforcesHandle || !profile.leetcodeUsername;
   const showForm = editing || (isOwnProfile && handlesMissing && !onboardingDismissed);
   const total = values.reduce((sum, v) => sum + v.count, 0);
+  // Built from profile.githubUsername (canonical DB casing) rather than
+  // window.location.href - a visitor who reached this page via a
+  // different-cased URL (e.g. /visalan-h) should still share the correct,
+  // canonical link, not whatever casing happened to be typed.
+  const profileUrl = `${window.location.origin}/${profile.githubUsername}`;
+  // Name always leads - many navigator.share() targets (WhatsApp etc.)
+  // only paste `text` + `url` into the compose box and drop `title`
+  // entirely, so relying on title to carry the username meant a tagline
+  // alone could get shared with no name in it at all.
+  const shareText = profile.tagline
+    ? `${profile.githubUsername} on Vizzible — ${profile.tagline}`
+    : `Check out ${profile.githubUsername}'s combined coding heatmap on Vizzible.`;
 
   // No manual "clear selectedDay/selectedMonth" needed here anymore - that
   // state now lives inside ActivityBoard, keyed below by platform+year, so
@@ -204,11 +217,14 @@ export default function Profile() {
           <h1>{profile.githubUsername}</h1>
           {profile.tagline && <p className="profile-tagline">{profile.tagline}</p>}
         </div>
-        {isOwnProfile && !showForm && (
-          <button type="button" className="btn-secondary edit-profile-btn" onClick={() => setEditing(true)}>
-            Edit profile
-          </button>
-        )}
+        <div className="profile-header-actions">
+          <ShareButton url={profileUrl} title={`${profile.githubUsername} — Vizzible`} text={shareText} />
+          {isOwnProfile && !showForm && (
+            <button type="button" className="btn-secondary edit-profile-btn" onClick={() => setEditing(true)}>
+              Edit profile
+            </button>
+          )}
+        </div>
       </header>
 
       {profile.bio && <p className="profile-bio">{profile.bio}</p>}

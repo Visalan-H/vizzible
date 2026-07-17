@@ -49,20 +49,39 @@ function escapeXml(unsafe) {
   });
 }
 
+// GitHub usernames are case-insensitive (GitHub itself treats Visalan-H
+// and visalan-h as the same account), but githubUsername is stored with
+// whatever casing GitHub's API returned at sign-in and Mongo string
+// equality is case-sensitive by default - so a profile URL only worked if
+// you typed the exact original casing. Every route below looks a user up
+// by username from a URL, so they all go through this instead of a plain
+// findOne, matching case-insensitively via an anchored, escaped regex
+// (small user table - a regex scan here is not a perf concern - so this
+// skips a schema migration/second indexed field for a one-line fix).
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function findUserByUsername(username) {
+  return User.findOne({ githubUsername: new RegExp(`^${escapeRegExp(username)}$`, 'i') });
+}
+
 // --- Theme-equal intensity math ---------------------------------------
-// Duplicated from frontend/src/utils/platformColors.js (getLightModeTierColor)
-// rather than shared, since this is a separate CommonJS backend with no
-// shared module boundary with the Vite frontend. Keep both in sync if
-// either the platform hues or the dark-theme opacity curve ever changes.
-// See that file's comment block for the full rationale: dark theme's
-// opacity-over-black curve gets contrast "for free", and blending the
-// same hue toward this image's near-white canvas at matching opacities
-// can't get anywhere near the same WCAG contrast - so these tiers are
-// solid HSL-darkened shades instead, each solved to hit the identical
-// contrast ratio the dark-theme curve already achieves for that level.
+// Duplicated from frontend/src/utils/platformColors.js (getLightModeTierColor /
+// getDarkModeTierColor) rather than shared, since this is a separate
+// CommonJS backend with no shared module boundary with the Vite frontend.
+// Keep both in sync if either the platform hues or TIER_FRACTIONS curve
+// ever changes.
+//
+// See that file's comment block for the full rationale: target ratios are
+// defined directly on a shared curve (TIER_FRACTIONS) anchored to each hue's
+// own contrast against black, then solved as a solid HSL-darkened shade
+// hitting that exact ratio against THIS image's near-white canvas. This
+// image only ever renders on a light canvas, so it only needs the
+// light-mode half of that math (no dark-canvas / lightenToContrast side).
 const OG_CANVAS = '#F2EDED'; // matches this image's own background, below
 const OG_DARK_REFERENCE_CANVAS = '#000000';
-const OG_DARK_OPACITIES = [0.25, 0.5, 0.75, 1];
+// Same curve as frontend's TIER_FRACTIONS - keep numerically identical.
+const OG_TIER_FRACTIONS = [0.35, 0.55, 0.8, 1];
 
 function ogSrgbToLinear(c) {
   c /= 255;
@@ -82,12 +101,6 @@ function ogContrastRatio(hexA, hexB) {
   const hi = Math.max(L1, L2);
   const lo = Math.min(L1, L2);
   return (hi + 0.05) / (lo + 0.05);
-}
-function ogBlend(fgHex, bgHex, alpha) {
-  const fg = ogHexToRgb(fgHex);
-  const bg = ogHexToRgb(bgHex);
-  const rgb = fg.map((c, i) => Math.round(bg[i] + (c - bg[i]) * alpha));
-  return '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('');
 }
 function ogHexToHsl(hex) {
   const [r, g, b] = ogHexToRgb(hex).map((c) => c / 255);
@@ -151,10 +164,12 @@ function ogDarkenToContrast(baseHex, bgHex, targetRatio) {
   return ogHslToHex(h, s, (lo + hi) / 2);
 }
 // Builds the 4-tier ramp (level 1-4) for one platform hue, each tier hitting
-// the same contrast ratio dark theme's opacity curve achieves at that level.
+// a target ratio on the shared TIER_FRACTIONS curve, anchored to baseHex's
+// own contrast against black (see comment block above).
 function buildTierRamp(baseHex) {
-  return OG_DARK_OPACITIES.map((alpha) => {
-    const targetRatio = ogContrastRatio(ogBlend(baseHex, OG_DARK_REFERENCE_CANVAS, alpha), OG_DARK_REFERENCE_CANVAS);
+  const fullRatio = ogContrastRatio(baseHex, OG_DARK_REFERENCE_CANVAS);
+  return OG_TIER_FRACTIONS.map((fraction) => {
+    const targetRatio = 1 + (fullRatio - 1) * fraction;
     return ogDarkenToContrast(baseHex, OG_CANVAS, targetRatio);
   });
 }
@@ -267,14 +282,14 @@ async function updateProfile(req, res) {
 }
 
 async function getProfile(req, res) {
-  const user = await User.findOne({ githubUsername: req.params.username });
+  const user = await findUserByUsername(req.params.username);
   if (!user) return res.status(404).json({ error: 'Profile not found' });
 
   res.json({ ...publicFields(user), lastSyncedAt: user.lastSyncedAt });
 }
 
 async function getActivity(req, res) {
-  const user = await User.findOne({ githubUsername: req.params.username });
+  const user = await findUserByUsername(req.params.username);
   if (!user) return res.status(404).json({ error: 'Profile not found' });
 
   // At most a few documents per user now (one per platform per year they've
@@ -309,7 +324,7 @@ async function getActivity(req, res) {
 
 async function getProfileOGImage(req, res) {
   try {
-    const user = await User.findOne({ githubUsername: req.params.username });
+    const user = await findUserByUsername(req.params.username);
     if (!user) return res.status(404).send('Profile not found');
 
     const rows = await DailyActivity.find({ userId: user._id }).lean();
@@ -526,7 +541,7 @@ async function getProfileOGImage(req, res) {
   }
 }async function getProfileMetaHTML(req, res) {
   try {
-    const user = await User.findOne({ githubUsername: req.params.username });
+    const user = await findUserByUsername(req.params.username);
     if (!user) {
       return res.status(404).send(`
         <!DOCTYPE html>

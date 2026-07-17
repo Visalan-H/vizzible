@@ -42,6 +42,12 @@
   flex-shrink: 0;
 }
 
+.profile-header-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
 .sync-note {
   font-size: 13px;
   color: var(--text-mute);
@@ -301,12 +307,16 @@
     margin-top: 2px;
   }
 
-  .profile-header .edit-profile-btn {
+  .profile-header .profile-header-actions {
     grid-area: edit;
     width: 100%;
-    align-self: stretch;
-    justify-content: center;
+    gap: var(--space-sm);
     margin-top: var(--space-xs);
+  }
+
+  .profile-header .profile-header-actions > button {
+    flex: 1 1 0;
+    justify-content: center;
   }
 
   .form-inputs-group {

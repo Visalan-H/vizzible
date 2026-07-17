@@ -1,0 +1,6 @@
+.share-profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
