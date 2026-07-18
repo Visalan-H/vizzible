@@ -1,30 +1,30 @@
 import React from 'react';
 import './SideDecorations.css';
 
+const EVENTS = [
+  { id: 1, platform: 'github', text: 'contribution graph synced' },
+  { id: 2, platform: 'leetcode', text: 'daily progress synced' },
+  { id: 3, platform: 'codeforces', text: 'contest rating updated' }
+];
+
+// Simple 2D grid cells for mini heatmap: 13 weeks * 7 days = 91 cells
+const GRID_CELLS = [
+  0, 1, 0, 2, 0, 0, 1,
+  3, 0, 0, 1, 2, 0, 0,
+  0, 4, 1, 0, 0, 2, 1,
+  0, 0, 3, 0, 1, 0, 0,
+  2, 1, 0, 0, 4, 0, 2,
+  0, 0, 1, 3, 0, 0, 0,
+  1, 2, 0, 0, 1, 0, 3,
+  0, 0, 4, 2, 0, 1, 0,
+  0, 1, 0, 0, 3, 0, 2,
+  1, 0, 2, 0, 0, 4, 0,
+  0, 3, 1, 0, 1, 0, 0,
+  2, 0, 0, 4, 0, 2, 1,
+  0, 1, 3, 0, 0, 1, 0
+];
+
 export default function SideDecorations() {
-  const events = [
-    { id: 1, platform: 'github', text: 'contribution graph synced' },
-    { id: 2, platform: 'leetcode', text: 'daily progress synced' },
-    { id: 3, platform: 'codeforces', text: 'contest rating updated' }
-  ];
-
-  // Simple 2D grid cells for mini heatmap: 13 weeks * 7 days = 91 cells
-  const gridCells = [
-    0, 1, 0, 2, 0, 0, 1,
-    3, 0, 0, 1, 2, 0, 0,
-    0, 4, 1, 0, 0, 2, 1,
-    0, 0, 3, 0, 1, 0, 0,
-    2, 1, 0, 0, 4, 0, 2,
-    0, 0, 1, 3, 0, 0, 0,
-    1, 2, 0, 0, 1, 0, 3,
-    0, 0, 4, 2, 0, 1, 0,
-    0, 1, 0, 0, 3, 0, 2,
-    1, 0, 2, 0, 0, 4, 0,
-    0, 3, 1, 0, 1, 0, 0,
-    2, 0, 0, 4, 0, 2, 1,
-    0, 1, 3, 0, 0, 1, 0
-  ];
-
   return (
     <div className="side-decorations" aria-hidden="true">
       {/* Left Panel: Sync Status & Feed */}
@@ -52,7 +52,7 @@ export default function SideDecorations() {
           </div>
 
           <div className="feed-list">
-            {events.map((e, idx) => (
+            {EVENTS.map((e, idx) => (
               <div 
                 key={e.id} 
                 className="feed-item"
@@ -79,7 +79,7 @@ export default function SideDecorations() {
           </div>
 
           <div className="mini-heatmap">
-            {gridCells.map((level, idx) => (
+            {GRID_CELLS.map((level, idx) => (
               <div 
                 key={idx} 
                 className={`heatmap-cell level-${level}`} 

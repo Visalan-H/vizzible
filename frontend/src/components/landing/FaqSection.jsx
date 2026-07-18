@@ -27,8 +27,22 @@ const FAQS = [
 // type across renders - defining it inside the parent would make React
 // remount every FAQ item (losing open/closed state) on every toggle.
 function FaqItem({ question, answer, open, onToggle }) {
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onToggle();
+    }
+  }
+
   return (
-    <div className={`faq-card ${open ? 'open' : ''}`} onClick={onToggle}>
+    <div
+      className={`faq-card ${open ? 'open' : ''}`}
+      onClick={onToggle}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+    >
       <div className="faq-question">
         <span>{question}</span>
         <span className="faq-icon-wrapper">

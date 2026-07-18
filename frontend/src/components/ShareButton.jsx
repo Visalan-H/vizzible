@@ -13,6 +13,14 @@ function ShareIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg className="check-icon animate-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 // Native share sheet where supported (mostly mobile browsers), falling
 // back to copy-to-clipboard everywhere else - most desktop browsers still
 // don't implement navigator.share. Either way, one click hands off this
@@ -44,9 +52,13 @@ export default function ShareButton({ url, title, text }) {
   }
 
   return (
-    <button type="button" className="btn-secondary share-profile-btn" onClick={handleClick}>
-      <ShareIcon />
-      {copied ? 'Copied!' : 'Share'}
+    <button 
+      type="button" 
+      className={`btn-secondary share-profile-btn ${copied ? 'copied' : ''}`} 
+      onClick={handleClick}
+    >
+      {copied ? <CheckIcon /> : <ShareIcon />}
+      <span>{copied ? 'Copied!' : 'Share'}</span>
     </button>
   );
 }

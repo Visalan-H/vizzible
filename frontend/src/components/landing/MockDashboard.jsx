@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import CountUp from '../CountUp';
 import PlatformToggle from '../PlatformToggle';
 import YearSelector from '../YearSelector';
 import ActivityBoard from '../ActivityBoard';
@@ -49,19 +50,7 @@ export default function MockDashboard() {
       style={{ width: '100%', maxWidth: '900px', margin: '48px auto 0 auto' }}
     >
       <header className="profile-header">
-        <div
-          className="avatar avatar-lg"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--ink)',
-            color: 'var(--canvas)',
-            fontWeight: 700,
-            fontSize: '20px',
-            userSelect: 'none',
-          }}
-        >
+        <div className="avatar avatar-lg mock-avatar-initials">
           YN
         </div>
         <div className="profile-header-text">
@@ -88,20 +77,17 @@ export default function MockDashboard() {
 
       <div className="activity-summary-bar">
         <p className="activity-total">
-          {total} activity {total === 1 ? 'point' : 'points'} in 2026
+          <CountUp value={total} /> activity {total === 1 ? 'point' : 'points'} in 2026
           {streaks.current > 0 && (
             <span className="streak-inline" style={{ color: PLATFORM_COLORS[platform] }}>
-              · {streaks.current} day streak
+              · <CountUp value={streaks.current} /> day streak
             </span>
           )}
         </p>
         <p className="activity-hint">Click a month label to see stats · hover a day for details</p>
       </div>
 
-      {platform === 'combined' && <PlatformLegend />}
-
       <ActivityBoard
-        key={platform}
         values={values}
         color={PLATFORM_COLORS[platform]}
         startDate={START_DATE}
@@ -109,6 +95,8 @@ export default function MockDashboard() {
         year={2026}
         platform={platform}
       />
+
+      {platform === 'combined' && <PlatformLegend />}
     </div>
   );
 }

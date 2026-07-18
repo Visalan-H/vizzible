@@ -86,6 +86,17 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
+.mock-avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  color: var(--canvas);
+  font-weight: 700;
+  font-size: 20px;
+  user-select: none;
+}
+
 .hero-actions .btn-primary {
   height: 46px;
   padding: 0 28px;
@@ -197,12 +208,13 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 300ms var(--ease-out), box-shadow 300ms var(--ease-out), transform 300ms var(--ease-out);
 }
 
 .feature-visual:hover {
   border-color: var(--ink);
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px) scale(1.015);
 }
 
 /* Visual 1: Pipeline Mock */
@@ -441,10 +453,6 @@
 }
 
 @media (max-width: 768px) {
-  .cursor-follower-canvas {
-    display: none !important;
-  }
-  
   .feature-row {
     flex-direction: column !important;
     gap: 32px; /* Increased space between text and visual mockups */
@@ -503,13 +511,18 @@
   border-radius: 8px;
   padding: var(--space-md) var(--space-lg);
   cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out), transform 200ms var(--ease-out);
   user-select: none;
 }
 
 .faq-card:hover {
   background: var(--surface-card);
   border-color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.faq-card:active {
+  transform: scale(0.99);
 }
 
 .faq-card.open {
@@ -558,7 +571,8 @@
   overflow: hidden;
   opacity: 0;
   transform: scale(0.99) translateY(-4px);
-  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  padding-top: 0;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), padding-top 200ms var(--ease-out);
 }
 
 .faq-card.open .faq-answer {
@@ -627,12 +641,7 @@
 .vizz-link:hover {
   text-decoration-style: wavy;
   text-decoration-color: var(--ink);
-  animation: linkWiggle 0.4s ease-in-out infinite alternate;
-}
-
-@keyframes linkWiggle {
-  0% { transform: rotate(-2deg) scale(1.05); }
-  100% { transform: rotate(2deg) scale(1.05); }
+  transform: scale(1.05) rotate(2deg);
 }
 
 .vizz-tooltip {
@@ -669,5 +678,17 @@
 .vizz-link:hover .vizz-tooltip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* Scroll Reveal Transition styling */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out);
+}
+
+.reveal-on-scroll.active {
+  opacity: 1;
+  transform: translateY(0);
 }
 

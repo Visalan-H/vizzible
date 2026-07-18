@@ -1,4 +1,4 @@
-import { cloneElement, memo, useEffect, useMemo, useRef } from 'react';
+import { cloneElement, memo, useEffect, useEffectEvent, useMemo, useRef } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import { useTheme } from '../hooks/ThemeContext';
 import { useHoverCapable } from '../hooks/useHoverCapable';
@@ -21,6 +21,14 @@ function monthOf(dateStr) {
   return Number(dateStr.slice(5, 7)) - 1;
 }
 
+function getDayIndex(dateStr, year) {
+  if (!dateStr) return 0;
+  const date = new Date(dateStr + 'T00:00:00');
+  const start = new Date(year, 0, 1);
+  const diff = date.getTime() - start.getTime();
+  return Math.round(diff / 86400000);
+}
+
 function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, highlightMonth, onMonthClick, platform }) {
   const max = useMemo(() => Math.max(1, ...values.map((v) => v.count)), [values]);
   const { theme } = useTheme();
@@ -41,14 +49,56 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
   // react-calendar-heatmap renders its own month labels (correctly spaced
   // proportional to each month's actual week-columns - Feb is narrower than
   // Jan, etc), but doesn't expose a per-label onClick prop. Rather than
-  // duplicate them with a second, misaligned row of buttons, click
-  // delegation on the container catches clicks on the library's own
-  // <text class="react-calendar-heatmap-month-label"> elements directly.
-  function handleContainerClick(event) {
-    if (!event.target.classList.contains('react-calendar-heatmap-month-label')) return;
-    const month = MONTH_INDEX[event.target.textContent];
-    if (month != null) onMonthClick?.(month);
-  }
+  // duplicate them with a second, misaligned row of buttons, a single
+  // delegated click/keydown listener pair on the scroll container (below)
+  // catches interaction with the library's own
+  // <text class="react-calendar-heatmap-month-label"> DOM nodes.
+
+  // Wrapped in useEffectEvent so the delegated-listener effect below can
+  // always call the latest onMonthClick without listing it as a dependency
+  // - an Effect Event reads current props/state without being reactive, so
+  // a parent re-render that hands down a new onMonthClick function
+  // identity (e.g. an inline arrow prop) doesn't force that effect to tear
+  // down and re-attach its listeners on every render.
+  const handleMonthActivate = useEffectEvent((monthIndex) => {
+    onMonthClick?.(monthIndex);
+  });
+
+  // Owns exactly one click listener and one keydown listener on the
+  // container, attached once on mount and released on unmount - cheaper
+  // than one pair per label, and its cleanup is a direct, traceable
+  // removeEventListener call for each addEventListener call, with no other
+  // reactive values captured, so this effect never needs to re-run.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const monthLabelFor = (target) => target.closest?.('.react-calendar-heatmap-month-label');
+
+    const onClick = (event) => {
+      const label = monthLabelFor(event.target);
+      if (!label) return;
+      const monthIndex = MONTH_INDEX[label.textContent];
+      if (monthIndex != null) handleMonthActivate(monthIndex);
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const label = monthLabelFor(event.target);
+      if (!label) return;
+      event.preventDefault();
+      const monthIndex = MONTH_INDEX[label.textContent];
+      if (monthIndex != null) handleMonthActivate(monthIndex);
+    };
+
+    container.addEventListener('click', onClick);
+    container.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      container.removeEventListener('click', onClick);
+      container.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   // Toggling a CSS class on the real label nodes (rather than trying to
   // thread highlight state through the library's props, which it doesn't
@@ -76,6 +126,12 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
 
       const isActive = monthIndex === highlightMonth;
       label.classList.toggle('active', isActive);
+
+      // Keyboard-focusable and announced as a button - the actual
+      // click/keydown handling lives in the delegated-listener effect
+      // above, so this effect only sets the attributes, no listeners.
+      label.setAttribute('role', 'button');
+      label.setAttribute('tabindex', '0');
       
       const monthStr = String(monthIndex + 1).padStart(2, '0');
       const dayRects = container.querySelectorAll(`rect[data-date^="${year}-${monthStr}-"]`);
@@ -100,7 +156,7 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
 
   return (
     <div className="heatmap-scroll-container">
-      <div className="heatmap-scroll-inner" ref={containerRef} onClick={handleContainerClick}>
+      <div className="heatmap-scroll-inner" ref={containerRef}>
         <CalendarHeatmap
           startDate={startDate}
           endDate={endDate}
@@ -145,7 +201,15 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
               displayColor = isLight ? getLightModeTierColor(cellColor, level) : getDarkModeTierColor(cellColor, level);
             }
 
-            return cloneElement(element, { style: { fill: displayColor, fillOpacity }, 'data-date': value?.date });
+            const weekIdx = Math.floor(getDayIndex(value?.date, startDate.getUTCFullYear()) / 7);
+            return cloneElement(element, { 
+              style: { 
+                fill: displayColor, 
+                fillOpacity,
+                animationDelay: `${weekIdx * 10}ms`
+              }, 
+              'data-date': value?.date 
+            });
           }}
         />
       </div>

@@ -1,3 +1,5 @@
+import CountUp from './CountUp';
+import { PLATFORM_KEY } from '../utils/platformColors';
 import './MonthDetail.css';
 
 const MONTH_NAMES = [
@@ -17,8 +19,13 @@ function formatDay(dateStr) {
 
 // days: dense per-day rows for just the selected month, each already
 // carrying github/codeforces/leetcode/total regardless of which platform
-// tab is active - same shape Heatmap's `values` items have.
-export default function MonthDetail({ days, month, year, onClose }) {
+// tab is active - same shape Heatmap's `values` items have. `platform` is
+// the currently selected tab: 'combined' reports across all 3 platforms
+// (as before); a single platform reports only that platform's own counts,
+// same convention DayDetail already follows.
+export default function MonthDetail({ days, month, year, platform, onClose }) {
+  const field = PLATFORM_KEY[platform]; // 'total' for combined, else 'github'/'codeforces'/'leetcode'
+
   const totals = days.reduce(
     (acc, d) => {
       acc.github += d.github;
@@ -29,14 +36,20 @@ export default function MonthDetail({ days, month, year, onClose }) {
     },
     { github: 0, codeforces: 0, leetcode: 0, total: 0 }
   );
+  const effectiveTotal = totals[field];
 
-  const activeDays = days.filter((d) => d.total > 0).length;
-  const busiest = days.reduce((max, d) => (d.total > (max?.total ?? 0) ? d : max), null);
+  const activeDays = days.filter((d) => d[field] > 0).length;
+  const busiest = days.reduce((max, d) => (d[field] > (max?.[field] ?? 0) ? d : max), null);
 
-  const lines = Object.keys(PLATFORM_LABELS).reduce((acc, p) => {
-    if (totals[p] > 0) acc.push(`${pluralize(totals[p], PLATFORM_UNITS[p])} on ${PLATFORM_LABELS[p]}`);
-    return acc;
-  }, []);
+  const lines =
+    platform === 'combined'
+      ? Object.keys(PLATFORM_LABELS).reduce((acc, p) => {
+          if (totals[p] > 0) acc.push(`${pluralize(totals[p], PLATFORM_UNITS[p])} on ${PLATFORM_LABELS[p]}`);
+          return acc;
+        }, [])
+      : totals[platform] > 0
+        ? [`${pluralize(totals[platform], PLATFORM_UNITS[platform])} on ${PLATFORM_LABELS[platform]}`]
+        : [];
 
   return (
     <div className="month-detail">
@@ -47,7 +60,7 @@ export default function MonthDetail({ days, month, year, onClose }) {
 
       <div className="month-detail-stats">
         <div className="month-detail-stat">
-          <span className="month-detail-stat-value">{totals.total}</span>
+          <span className="month-detail-stat-value"><CountUp value={effectiveTotal} /></span>
           <span className="month-detail-stat-label">activity points</span>
         </div>
         <div className="month-detail-stat">
@@ -66,9 +79,9 @@ export default function MonthDetail({ days, month, year, onClose }) {
         <p className="month-detail-empty">No activity this month.</p>
       )}
 
-      {busiest && busiest.total > 0 && (
+      {busiest && busiest[field] > 0 && (
         <p className="month-detail-busiest">
-          Busiest day: {formatDay(busiest.date)} ({pluralize(busiest.total, 'point')})
+          Busiest day: {formatDay(busiest.date)} ({pluralize(busiest[field], 'point')})
         </p>
       )}
     </div>

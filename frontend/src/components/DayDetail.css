@@ -4,6 +4,13 @@
   border: 1px solid var(--hairline-strong);
   border-radius: var(--rounded-sm);
   padding: var(--space-lg);
+  animation: pop-in 250ms var(--ease-out) both;
+  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+
+.day-detail:hover {
+  border-color: var(--ink);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
 }
 
 .day-detail-close {

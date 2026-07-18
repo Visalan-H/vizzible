@@ -31,6 +31,55 @@
   margin-top: var(--space-xs);
 }
 
+.profile-visits-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.profile-visits-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-full, 9999px);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-mute);
+  cursor: default;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+
+.profile-visits-badge:hover {
+  border-color: var(--hairline-strong);
+  background: var(--surface-card);
+  transform: translateY(-0.5px);
+}
+
+.profile-visits-badge svg {
+  color: var(--text-stone);
+  transition: transform 200ms var(--ease-out);
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.profile-visits-badge:hover svg {
+  transform: scale(1.1);
+  color: var(--ink);
+}
+
+.profile-visits-badge .badge-count {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.profile-visits-badge .badge-unit {
+  color: var(--text-stone);
+}
+
 .profile-bio {
   font-size: 14px;
   color: var(--text-body);
@@ -79,6 +128,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  animation: pop-in 300ms var(--ease-out) both;
 }
 
 .onboarding-form-title {
@@ -123,7 +173,8 @@
   gap: var(--space-xs);
 }
 
-.field-group label {
+.field-group label,
+.field-group-label {
   font-size: 13px;
   color: var(--text-mute);
   font-weight: 500;
@@ -249,6 +300,7 @@
   color: var(--text-secondary);
   font-size: 0.9rem;
   text-align: center;
+  animation: pop-in 300ms var(--ease-out) both;
 }
 
 /* Activity Summary Details */
@@ -366,16 +418,6 @@
 
   .controls-row .platform-toggle {
     margin-bottom: 0;
-    flex: 0 1 auto; /* Don't stretch the line wider than the options */
-    min-width: 0;
-    overflow-x: auto;
-    display: flex;
-    white-space: nowrap;
-    scrollbar-width: none; /* Firefox */
-  }
-
-  .controls-row .platform-toggle::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
   }
 
   .controls-row .year-selector {
@@ -399,6 +441,8 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-md);
+  position: relative;
+  z-index: 10;
 }
 
 .controls-row .platform-toggle {
@@ -412,3 +456,31 @@
   align-items: start;
   margin-top: var(--space-sm);
 }
+
+/* Orchestrated Fade-up entry for Profile page components */
+@keyframes profile-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.profile-header,
+.profile-bio,
+.profile-links,
+.controls-row,
+.streak-card,
+.activity-summary-bar {
+  animation: profile-fade-up 450ms var(--ease-out) both;
+}
+
+.profile-header { animation-delay: 0ms; }
+.profile-bio { animation-delay: 80ms; }
+.profile-links { animation-delay: 140ms; }
+.controls-row { animation-delay: 200ms; }
+.streak-card { animation-delay: 260ms; }
+.activity-summary-bar { animation-delay: 320ms; }

@@ -5,6 +5,13 @@
   border-radius: var(--rounded-sm);
   padding: var(--space-lg);
   margin-bottom: var(--space-lg);
+  animation: pop-in 250ms var(--ease-out) both;
+  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+
+.month-detail:hover {
+  border-color: var(--ink);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
 }
 
 .month-detail-close {

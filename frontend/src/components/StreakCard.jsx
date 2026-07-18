@@ -1,3 +1,4 @@
+import CountUp from './CountUp';
 import './StreakCard.css';
 
 const PLATFORM_LABELS = { combined: 'combined', github: 'GitHub', codeforces: 'Codeforces', leetcode: 'LeetCode' };
@@ -33,7 +34,7 @@ export default function StreakCard({ current, longest, platform, color }) {
           <FlameIcon style={{ color: isLit ? color : 'var(--text-ash)' }} />
         </div>
         <div className="streak-card-stat-text">
-          <span className="streak-card-stat-value">{current}</span>
+          <span className="streak-card-stat-value"><CountUp value={current} /></span>
           <span className="streak-card-stat-label">
             day current streak{platform !== 'combined' ? ` · ${label}` : ''}
           </span>
@@ -47,7 +48,7 @@ export default function StreakCard({ current, longest, platform, color }) {
           <FlameIcon style={{ color: longest > 0 ? (platform === 'combined' ? 'var(--text-body)' : color) : 'var(--text-ash)' }} />
         </div>
         <div className="streak-card-stat-text">
-          <span className="streak-card-stat-value">{longest}</span>
+          <span className="streak-card-stat-value"><CountUp value={longest} /></span>
           <span className="streak-card-stat-label">day longest streak</span>
         </div>
       </div>

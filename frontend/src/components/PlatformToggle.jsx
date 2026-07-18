@@ -51,8 +51,14 @@ const OPTIONS = [
 ];
 
 export default function PlatformToggle({ value, onChange }) {
+  const activeIndex = OPTIONS.findIndex((option) => option.value === value);
+
   return (
     <div className="platform-toggle">
+      <div
+        className="platform-toggle-slider"
+        style={{ transform: `translateX(${activeIndex * 100}%)` }}
+      />
       {OPTIONS.map((option) => (
         <button
           type="button"

@@ -3,4 +3,21 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.share-profile-btn.copied {
+  border-color: var(--success);
+  color: var(--success);
+  background: var(--surface-soft);
+}
+
+@keyframes check-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-check {
+  animation: check-pop 250ms var(--ease-out) both;
 }

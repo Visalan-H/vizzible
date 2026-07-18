@@ -1,8 +1,11 @@
 .platform-legend {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--space-lg);
-  margin-bottom: var(--space-sm);
+  margin-top: var(--space-sm);
+  margin-bottom: 0;
+  animation: pop-in 250ms var(--ease-out) both;
 }
 
 .platform-legend-item {

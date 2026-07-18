@@ -1,32 +1,95 @@
-.year-selector {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+.year-selector-container {
+  position: relative;
+  display: inline-block;
+}
+
+.year-selector-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   background-color: var(--surface-soft);
-  background-image: var(--select-arrow);
-  background-repeat: no-repeat;
-  background-position: right 12px center;
   border: 1px solid var(--hairline-strong);
   border-radius: var(--rounded-sm);
-  padding: 6px 32px 6px 12px;
+  padding: 6px 16px;
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
   outline: none;
+  height: 38px;
   transition: background-color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
 
-.year-selector:hover {
+.year-selector-trigger:hover {
   background-color: var(--surface-card);
   border-color: var(--ink);
+  transform: scale(1.02) translateY(-0.5px);
 }
 
-.year-selector:active {
-  transform: scale(0.97);
+.year-selector-trigger:active {
+  transform: scale(0.97) translateY(0);
 }
 
-.year-selector option {
-  background-color: var(--canvas);
+.year-selector-chevron {
+  transition: transform 200ms var(--ease-out);
+}
+
+.year-selector-chevron.open {
+  transform: rotate(180deg);
+}
+
+.year-selector-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 4px;
+  list-style: none;
+  margin: 0;
+  z-index: 100;
+  min-width: 100px;
+  animation: pop-in 200ms var(--ease-out) both;
+  transform-origin: top right;
+}
+
+:root[data-theme="dark"] .year-selector-dropdown {
+  background: #121212;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .year-selector-dropdown {
+    background: #121212;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.year-selector-option {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-mute);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+
+.year-selector-option:hover {
+  background: var(--surface-soft);
   color: var(--ink);
+}
+
+.year-selector-option.active {
+  background: var(--surface-card);
+  color: var(--ink);
+  font-weight: 600;
 }

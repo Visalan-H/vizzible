@@ -165,6 +165,8 @@ input, textarea, button, select {
 
 /* Button & Link Styles */
 .btn-primary {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -177,15 +179,59 @@ input, textarea, button, select {
   border-radius: var(--rounded-sm);
   cursor: pointer;
   text-decoration: none;
-  transition: transform 160ms var(--ease-out), background 160ms var(--ease-out), border-color 160ms var(--ease-out);
+  transition: 
+    transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 400ms var(--ease-out),
+    color 450ms var(--ease-out),
+    border-color 450ms var(--ease-out),
+    box-shadow 400ms var(--ease-out);
 }
+
+/* Theme-matching circular wipe background reveal */
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--canvas);
+  border-radius: 3px;
+  z-index: 1;
+  clip-path: circle(0% at 50% 50%);
+  transition: clip-path 550ms var(--ease-out);
+}
+
+.btn-primary > * {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-primary svg {
+  transition: transform 550ms var(--ease-out);
+}
+
 .btn-primary:hover {
-  background: var(--ink-deep);
-  border-color: var(--ink-deep);
+  background: var(--ink);
+  color: var(--ink);
+  border-color: var(--ink);
+  transform: scale(1.04) translateY(-1.5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
+
+.btn-primary:hover::before {
+  clip-path: circle(120% at 50% 50%);
+}
+
+.btn-primary:hover svg {
+  transform: rotate(15deg);
+}
+
 .btn-primary:active {
-  transform: scale(0.97);
+  transform: scale(0.96) translateY(0);
 }
+
+
 
 .btn-ghost {
   display: inline-flex;
@@ -200,14 +246,15 @@ input, textarea, button, select {
   border-radius: var(--rounded-sm);
   cursor: pointer;
   text-decoration: none;
-  transition: transform 160ms var(--ease-out), color 160ms var(--ease-out), background 160ms var(--ease-out);
+  transition: transform 200ms var(--ease-out), color 200ms var(--ease-out), background 200ms var(--ease-out);
 }
 .btn-ghost:hover {
   color: var(--ink);
   background: var(--surface-soft);
+  transform: scale(1.02) translateY(-1px);
 }
 .btn-ghost:active {
-  transform: scale(0.97);
+  transform: scale(0.97) translateY(0);
 }
 
 .btn-secondary {
@@ -223,14 +270,26 @@ input, textarea, button, select {
   border-radius: var(--rounded-sm);
   cursor: pointer;
   text-decoration: none;
-  transition: transform 160ms var(--ease-out), background 160ms var(--ease-out), color 160ms var(--ease-out);
+  transition: transform 200ms var(--ease-out), background 200ms var(--ease-out), color 200ms var(--ease-out);
 }
 .btn-secondary:hover {
   background: var(--surface-soft);
+  transform: scale(1.02) translateY(-1px);
 }
 .btn-secondary:active {
-  transform: scale(0.97);
+  transform: scale(0.97) translateY(0);
 }
+
+.btn-secondary svg,
+.btn-ghost svg {
+  transition: transform 200ms var(--ease-out);
+}
+
+.btn-secondary:hover svg,
+.btn-ghost:hover svg {
+  transform: rotate(-10deg) scale(1.15);
+}
+
 
 .btn-disabled {
   background: var(--surface-card);
@@ -372,5 +431,48 @@ input, textarea, button, select {
 }
 ::view-transition-new(root) {
   z-index: 9999;
+}
+
+/* Suppresses every element's own CSS *transitions* (heatmap cell fills,
+   button colors, input borders, etc.) for the duration of a theme-toggle
+   view transition. Without this, hundreds of individually-transitioning
+   properties (365+ heatmap <rect> fills alone) all fire at once underneath
+   the circular wipe - work that's both invisible (hidden under the wipe)
+   and expensive (fill/fill-opacity are paint properties, not compositor-
+   only like transform/opacity, so each one forces a real repaint every
+   frame). Toggled on/off around startViewTransition() in ThemeContext.jsx.
+   Deliberately does NOT touch `animation` - several elements use one-shot
+   entrance animations with fill-mode:both (profile-fade-up, cell-enter,
+   pop-in). Forcing animation:none and then removing the override makes
+   the browser treat it as a fresh animation when unsuppressed, replaying
+   it from frame 0 - which looked like the whole page re-animating on
+   every theme toggle. transition:none has no such restart behavior. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Global entry pop-in (Emil style: don't animate from scale(0)) */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Theme toggle micro-animation */
+.theme-toggle-btn svg {
+  transition: transform 0.4s var(--ease-out);
+}
+.theme-toggle-btn:hover svg {
+  transform: rotate(15deg);
+}
+.theme-toggle-btn:active svg {
+  transform: rotate(45deg);
 }
 

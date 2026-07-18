@@ -16,15 +16,22 @@
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
-  transition: background 0.15s ease, transform 160ms var(--ease-out);
+  transition: 
+    background 200ms var(--ease-out), 
+    border-color 200ms var(--ease-out), 
+    transform 200ms var(--ease-out), 
+    box-shadow 200ms var(--ease-out);
 }
 
 .profile-link-chip:hover {
   background: var(--surface-card);
+  border-color: var(--ink);
+  transform: scale(1.03) translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .profile-link-chip:active {
-  transform: scale(0.97);
+  transform: scale(0.97) translateY(0);
 }
 
 .profile-link-chip svg {

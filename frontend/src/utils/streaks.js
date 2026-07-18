@@ -25,8 +25,10 @@ export function computeStreaks(activity, platformKey) {
   if (!activity || activity.length === 0) return { current: 0, longest: 0 };
 
   const activeDays = activity
-    .filter((day) => day[platformKey] > 0)
-    .map((day) => toUTCDayNumber(day.date))
+    .reduce((acc, day) => {
+      if (day[platformKey] > 0) acc.push(toUTCDayNumber(day.date));
+      return acc;
+    }, [])
     .sort((a, b) => a - b);
 
   if (activeDays.length === 0) return { current: 0, longest: 0 };

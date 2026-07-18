@@ -8,9 +8,9 @@ import DayDetail from './DayDetail';
 // keeping the state here means hovering a day only re-renders this
 // subtree - Profile's header, links, and controls never see the update.
 //
-// Profile mounts this with key={`${platform}-${year}`}, so switching
-// platform or year remounts it fresh (selection reset for free) instead
-// of needing explicit "clear selection" calls in Profile's handlers.
+// Profile mounts this with key={year}, so switching
+// platform or year updates/remounts. On platform change, the selection is reset
+// manually inside a useEffect hook.
 export default function ActivityBoard({ values, color, startDate, endDate, year, platform }) {
   const [selectedMonth, setSelectedMonth] = useState(null); // 0-11 or null
   const [selectedDay, setSelectedDay] = useState(null);
@@ -44,7 +44,7 @@ export default function ActivityBoard({ values, color, startDate, endDate, year,
       />
 
       <div className="details-grid">
-        {monthDays && <MonthDetail days={monthDays} month={selectedMonth} year={year} onClose={closeMonth} />}
+        {monthDays && <MonthDetail days={monthDays} month={selectedMonth} year={year} platform={platform} onClose={closeMonth} />}
         {selectedDay && <DayDetail day={selectedDay} platform={platform} onClose={closeDay} />}
       </div>
     </>

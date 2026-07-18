@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 const ThemeContext = createContext();
@@ -37,7 +37,7 @@ export function ThemeProvider({ children }) {
 
   const activeTheme = themeState || systemTheme;
 
-  const toggleTheme = (e) => {
+  const toggleTheme = useCallback((e) => {
     const nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
 
     if (!document.startViewTransition) {
@@ -52,10 +52,22 @@ export function ThemeProvider({ children }) {
       Math.max(y, window.innerHeight - y)
     );
 
+    // Suppresses every element's own CSS transitions (hundreds of them
+    // across heatmap cells, buttons, inputs) for the duration of the view
+    // transition - see the .theme-switching rule in index.css for why.
+    // Removed once the browser reports the transition has fully finished
+    // (not just .ready, which only means the new-state screenshot is
+    // captured) so nothing un-suppresses mid-animation.
+    document.documentElement.classList.add('theme-switching');
+
     const transition = document.startViewTransition(() => {
       flushSync(() => {
         setThemeState(nextTheme);
       });
+    });
+
+    transition.finished.finally(() => {
+      document.documentElement.classList.remove('theme-switching');
     });
 
     transition.ready.then(() => {
@@ -74,10 +86,12 @@ export function ThemeProvider({ children }) {
         }
       );
     });
-  };
+  }, [activeTheme]);
+
+  const value = useMemo(() => ({ theme: activeTheme, toggleTheme }), [activeTheme, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme: activeTheme, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

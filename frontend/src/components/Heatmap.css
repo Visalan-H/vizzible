@@ -8,33 +8,60 @@
 
 .react-calendar-heatmap-month-label {
   cursor: pointer;
-  transition: fill 0.15s ease, font-weight 0.15s ease;
+  font-weight: 500;
+  outline: none;
+  transition: 
+    fill 200ms var(--ease-out), 
+    opacity 200ms var(--ease-out),
+    font-weight 200ms var(--ease-out), 
+    transform 200ms var(--ease-out);
+  transform-origin: center;
+  transform-box: fill-box;
 }
 
 .react-calendar-heatmap-month-label:hover {
   fill: var(--ink);
+  transform: translateY(-1px);
 }
 
 .react-calendar-heatmap-month-label.active {
   fill: var(--ink);
   font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1.5px;
+}
+
+/* Dim other month labels when one is active */
+.react-calendar-heatmap:has(.react-calendar-heatmap-month-label.active) .react-calendar-heatmap-month-label:not(.active) {
+  opacity: 0.3;
 }
 
 .react-calendar-heatmap rect {
   rx: 2px; /* Slight rounded corners on each day cell */
   ry: 2px;
   cursor: pointer;
-  transition: transform 0.1s ease, stroke-width 0.1s ease;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: cell-enter 450ms var(--ease-out) both;
+  transition: 
+    fill 300ms var(--ease-out), 
+    fill-opacity 300ms var(--ease-out), 
+    transform 180ms var(--ease-out), 
+    stroke 180ms var(--ease-out), 
+    stroke-width 180ms var(--ease-out);
 }
 
 .react-calendar-heatmap rect:hover {
   stroke: var(--ink);
-  stroke-width: 0.5px;
+  stroke-width: 1px;
+  transform: scale(1.22);
 }
 
 /* Base scale opacity overrides if not using the dynamic inline fill */
 .react-calendar-heatmap .color-empty {
   fill: var(--surface-card);
+  transition: fill 300ms var(--ease-out);
 }
 
 .heatmap-scroll-container {
@@ -53,5 +80,16 @@
 @media (max-width: 768px) {
   .heatmap-scroll-inner {
     min-width: 1000px; /* Make it more zoomed in on phones */
+  }
+}
+
+@keyframes cell-enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

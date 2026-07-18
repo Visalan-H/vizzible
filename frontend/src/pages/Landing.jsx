@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import useReveal from '../hooks/useReveal';
 import Hero from '../components/landing/Hero';
 import MockDashboard from '../components/landing/MockDashboard';
 import FeaturesSection from '../components/landing/FeaturesSection';
@@ -14,6 +15,9 @@ export default function Landing() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [error, setError] = useState(null);
 
+  const [featuresRef, featuresActive] = useReveal({ triggerOnce: true, threshold: 0.1 });
+  const [faqRef, faqActive] = useReveal({ triggerOnce: true, threshold: 0.1 });
+
   useEffect(() => {
     if (searchParams.get('error')) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -21,8 +25,6 @@ export default function Landing() {
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-
-
 
   return (
     <section className="landing">
@@ -33,10 +35,14 @@ export default function Landing() {
       <MockDashboard />
 
       <hr className="section-divider" />
-      <FeaturesSection />
+      <div ref={featuresRef} className={`reveal-on-scroll ${featuresActive ? 'active' : ''}`} style={{ width: '100%' }}>
+        <FeaturesSection />
+      </div>
 
       <hr className="section-divider" />
-      <FaqSection />
+      <div ref={faqRef} className={`reveal-on-scroll ${faqActive ? 'active' : ''}`} style={{ width: '100%' }}>
+        <FaqSection />
+      </div>
     </section>
   );
 }

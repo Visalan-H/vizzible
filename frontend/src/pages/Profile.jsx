@@ -13,6 +13,7 @@ import ShareButton from '../components/ShareButton';
 import ProfileLinks, { ICON_MAP } from '../components/ProfileLinks';
 import { computeStreaks } from '../utils/streaks';
 import { PLATFORM_COLORS, PLATFORM_KEY } from '../utils/platformColors';
+import CountUp from '../components/CountUp';
 import './Profile.css';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -35,6 +36,26 @@ function buildDenseValues(activity, platformKey, year) {
     days.push({ ...day, count: day[platformKey] });
   }
   return days;
+}
+
+function EyeIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
 }
 
 // GitHub/Codeforces/LeetCode profile links are derived from handles that
@@ -216,6 +237,18 @@ export default function Profile() {
         <div className="profile-header-text">
           <h1>{profile.githubUsername}</h1>
           {profile.tagline && <p className="profile-tagline">{profile.tagline}</p>}
+          <div className="profile-visits-badges">
+            <div className="profile-visits-badge" title="Total page views">
+              <EyeIcon />
+              <span className="badge-count"><CountUp value={profile.profileViews ?? 0} /></span>
+              <span className="badge-unit">views</span>
+            </div>
+            <div className="profile-visits-badge" title="Unique visitors">
+              <UsersIcon />
+              <span className="badge-count"><CountUp value={profile.uniqueVisitorCount ?? 0} /></span>
+              <span className="badge-unit">unique visitors</span>
+            </div>
+          </div>
         </div>
         <div className="profile-header-actions">
           <ShareButton url={profileUrl} title={`${profile.githubUsername} — Vizzible`} text={shareText} />
@@ -295,17 +328,15 @@ export default function Profile() {
 
       <div className="activity-summary-bar">
         <p className="activity-total">
-          {total} activity {total === 1 ? 'point' : 'points'} in {year}
+          <CountUp value={total} /> activity {total === 1 ? 'point' : 'points'} in {year}
         </p>
         <p className="activity-hint">
           Click a month label to see stats · {hoverCapable ? 'hover' : 'tap'} a day for details
         </p>
       </div>
 
-      {platform === 'combined' && <PlatformLegend />}
-
       <ActivityBoard
-        key={`${platform}-${year}`}
+        key={year}
         values={values}
         color={PLATFORM_COLORS[platform]}
         startDate={yearBounds.start}
@@ -313,6 +344,8 @@ export default function Profile() {
         year={year}
         platform={platform}
       />
+
+      {platform === 'combined' && <PlatformLegend />}
     </section>
   );
 }
@@ -328,7 +361,11 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
   const [leetcodeUsername, setLeetcodeUsername] = useState(profile.leetcodeUsername || '');
   const [tagline, setTagline] = useState(profile.tagline || '');
   const [bio, setBio] = useState(profile.bio || '');
-  const [links, setLinks] = useState(profile.links?.length ? profile.links : [{ label: '', url: '', icon: 'generic' }]);
+  const nextLinkId = useRef(0);
+  const withKeys = (list) => list.map((link) => ({ ...link, _key: link._key ?? `link-${nextLinkId.current++}` }));
+  const [links, setLinks] = useState(() =>
+    withKeys(profile.links?.length ? profile.links : [{ label: '', url: '', icon: 'generic' }])
+  );
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // 'saved' | 'error' | null
 
@@ -338,7 +375,8 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
 
   function addLink() {
     if (links.length >= MAX_LINKS) return;
-    setLinks((prev) => [...prev, { label: '', url: '', icon: 'generic' }]);
+    const newKey = `link-${nextLinkId.current++}`;
+    setLinks((prev) => [...prev, { label: '', url: '', icon: 'generic', _key: newKey }]);
   }
 
   function removeLink(index) {
@@ -358,7 +396,7 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
       };
       if (cleaned.url) acc.push(cleaned);
       return acc;
-    }, []);
+    }, []); // _key is intentionally dropped here - it's a client-only React key, not part of the persisted link shape
 
     const nextCodeforces = codeforcesHandle.trim() || null;
     const nextLeetcode = leetcodeUsername.trim() || null;
@@ -438,10 +476,10 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
       </div>
 
       <div className="field-group">
-        <label>Links ({links.length}/{MAX_LINKS})</label>
+        <span className="field-group-label">Links ({links.length}/{MAX_LINKS})</span>
         <div className="links-editor">
           {links.map((link, i) => (
-            <div className="links-editor-row" key={i}>
+            <div className="links-editor-row" key={link._key}>
               <div className="icon-selector-row">
                 {Object.entries(ICON_MAP).map(([key, info]) => {
                   const IconComp = info.component;

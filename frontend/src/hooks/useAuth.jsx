@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import client from '../api/client';
 
 const AuthContext = createContext(null);
@@ -19,10 +19,12 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  return <AuthContext.Provider value={{ user, setUser, loading }}>{children}</AuthContext.Provider>;
+  const value = useMemo(() => ({ user, setUser, loading }), [user, loading]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
+// eslint-disable-next-line react-refresh/only-export-components, react-doctor/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within <AuthProvider>');
