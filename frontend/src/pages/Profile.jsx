@@ -58,6 +58,15 @@ function UsersIcon() {
   );
 }
 
+function EditIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
 // GitHub/Codeforces/LeetCode profile links are derived from handles that
 // already exist rather than stored separately - one less thing to edit or
 // go stale relative to the actual handle.
@@ -238,23 +247,25 @@ export default function Profile() {
           <h1>{profile.githubUsername}</h1>
           {profile.tagline && <p className="profile-tagline">{profile.tagline}</p>}
           <div className="profile-visits-badges">
-            <div className="profile-visits-badge" title="Total page views">
+            <span className="profile-visits-badge" title="Total page views">
               <EyeIcon />
               <span className="badge-count"><CountUp value={profile.profileViews ?? 0} /></span>
               <span className="badge-unit">views</span>
-            </div>
-            <div className="profile-visits-badge" title="Unique visitors">
+            </span>
+            <span className="badge-separator" aria-hidden="true">·</span>
+            <span className="profile-visits-badge" title="Unique visitors">
               <UsersIcon />
               <span className="badge-count"><CountUp value={profile.uniqueVisitorCount ?? 0} /></span>
               <span className="badge-unit">unique visitors</span>
-            </div>
+            </span>
           </div>
         </div>
         <div className="profile-header-actions">
           <ShareButton url={profileUrl} title={`${profile.githubUsername} — Vizzible`} text={shareText} />
           {isOwnProfile && !showForm && (
             <button type="button" className="btn-secondary edit-profile-btn" onClick={() => setEditing(true)}>
-              Edit profile
+              <EditIcon />
+              <span>Edit profile</span>
             </button>
           )}
         </div>
@@ -346,6 +357,21 @@ export default function Profile() {
       />
 
       {platform === 'combined' && <PlatformLegend />}
+
+      {!currentUser && (
+        <div className="profile-footer-card">
+          <div className="profile-footer-card-content">
+            <h3>Create your own heatmap</h3>
+            <p>Combine your GitHub, Codeforces, and LeetCode activity into one developer profile.</p>
+          </div>
+          <a className="make-yours-footer-btn" href={`${import.meta.env.VITE_API_URL || ''}/api/auth/github`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.221-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.269 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.295 2.747-1.026 2.747-1.026.546 1.378.202 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.749 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.523 2 12 2z" />
+            </svg>
+            <span>Make yours too</span>
+          </a>
+        </div>
+      )}
     </section>
   );
 }
@@ -356,13 +382,13 @@ function normalizeUrl(raw) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+const withKeys = (list) => list.map((link) => ({ ...link, _key: link._key ?? `link-${Math.random().toString(36).slice(2, 9)}` }));
+
 function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
   const [codeforcesHandle, setCodeforcesHandle] = useState(profile.codeforcesHandle || '');
   const [leetcodeUsername, setLeetcodeUsername] = useState(profile.leetcodeUsername || '');
   const [tagline, setTagline] = useState(profile.tagline || '');
   const [bio, setBio] = useState(profile.bio || '');
-  const nextLinkId = useRef(0);
-  const withKeys = (list) => list.map((link) => ({ ...link, _key: link._key ?? `link-${nextLinkId.current++}` }));
   const [links, setLinks] = useState(() =>
     withKeys(profile.links?.length ? profile.links : [{ label: '', url: '', icon: 'generic' }])
   );
@@ -375,7 +401,7 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
 
   function addLink() {
     if (links.length >= MAX_LINKS) return;
-    const newKey = `link-${nextLinkId.current++}`;
+    const newKey = `link-${Math.random().toString(36).slice(2, 9)}`;
     setLinks((prev) => [...prev, { label: '', url: '', icon: 'generic', _key: newKey }]);
   }
 

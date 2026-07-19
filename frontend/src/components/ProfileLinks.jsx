@@ -52,7 +52,7 @@ function CodeforcesIcon() {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components, react-doctor/only-export-components
+// eslint-disable-next-line react-refresh/only-export-components
 export const ICON_MAP = {
   generic: { label: 'Generic (Redirect)', component: GenericLinkIcon },
   github: { label: 'GitHub', component: GithubIcon },

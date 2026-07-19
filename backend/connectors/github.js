@@ -56,7 +56,15 @@ async function fetchGithubActivity(username, accessToken) {
       const data = await client.request(YEAR_CALENDAR_QUERY, { login: username, from, to });
       return data.user.contributionsCollection.contributionCalendar.weeks
         .flatMap((week) => week.contributionDays)
-        .map((day) => ({ date: day.date, count: day.contributionCount }));
+        .map((day) => ({ date: day.date, count: day.contributionCount }))
+        // GitHub's calendar includes every day of the year, active or not
+        // (unlike Codeforces/LeetCode, which only report days with actual
+        // submissions) - without this filter, saveActivity would write a
+        // counts.MM-DD = 0 entry for every inactive day too, contradicting
+        // DailyActivity's sparse-storage design (see that model's comment)
+        // and inflating stats that assume a map key means "active" (e.g.
+        // the OG image's active-days count).
+        .filter((d) => d.count > 0);
     })
   );
 

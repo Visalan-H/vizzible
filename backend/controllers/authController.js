@@ -3,22 +3,9 @@ const axios = require('axios');
 const User = require('../models/User');
 const { signSession } = require('../utils/jwt');
 const { encrypt } = require('../utils/crypto');
+const { cookieOptions } = require('../utils/cookies');
 
 const STATE_COOKIE = 'oauth_state';
-
-// Shared by every place that sets/clears the session or state cookie, so
-// the httpOnly/secure/sameSite trio can't drift out of sync between them -
-// a clearCookie() call with different options than the original set()
-// silently fails to actually clear the cookie.
-function cookieOptions(maxAge) {
-  const isProduction = process.env.NODE_ENV === 'production';
-  return {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    ...(maxAge != null && { maxAge }),
-  };
-}
 
 function redirectToGithub(req, res) {
   // Random per-attempt state, stored in a short-lived httpOnly cookie and

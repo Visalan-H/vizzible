@@ -1,4 +1,3 @@
-import React from 'react';
 import './SideDecorations.css';
 
 const EVENTS = [

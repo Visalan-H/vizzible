@@ -18,4 +18,4 @@ React · Express · MongoDB · GitHub OAuth — deployed on Vercel.
 
 ## Status
 
-Early build — GitHub, Codeforces, and LeetCode heatmaps are live, with per-day and per-month detail panels, current/longest streak tracking (combined and per-platform), light/dark theming, profile customization (tagline, bio, up to 10 links), and shareable profile links with dynamic Open Graph preview cards. More platforms may follow if the demand's there.
+Early build — GitHub, Codeforces, and LeetCode heatmaps are live, with per-day and per-month detail panels, current/longest streak tracking (combined and per-platform), light/dark theming, profile customization (tagline, bio, up to 10 links), shareable profile links with dynamic Open Graph preview cards, profile view/unique-visitor counts, and a sign-in prompt on other users' profiles for anyone who wants one of their own. More platforms may follow if the demand's there.

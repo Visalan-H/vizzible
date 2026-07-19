@@ -24,6 +24,12 @@ const userSchema = new mongoose.Schema({
   links: { type: [linkSchema], default: [] },
   lastSyncedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
+  // Raw page loads of this user's public profile - never deduped.
+  profileViews: { type: Number, default: 0 },
+  // Distinct visitors, deduped forever via the ProfileVisit unique index.
+  // Logged-in visitors are deduped by userId (exact); anonymous visitors
+  // are deduped by a long-lived cookie (best-effort - see ProfileVisit).
+  uniqueVisitorCount: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model('User', userSchema);

@@ -2,12 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config({
   path: process.env.NODE_ENV === 'development' ? '.env.local' : '.env'
 });
 
 const { connectDB } = require('./config/db');
+const { apiLimiter } = require('./middleware/rateLimit');
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profiles');
 
@@ -20,16 +20,6 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 
-// Generic API-wide ceiling against abusive traffic. Individual routes
-// (OAuth start, profile writes) get tighter limits in their own routers.
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(apiLimiter);
-
 // Ensures the DB connection is ready before any route runs. Cheap on warm
 // invocations since connectDB() caches the connection promise.
 app.use(async (req, res, next) => {
@@ -40,6 +30,10 @@ app.use(async (req, res, next) => {
     res.status(503).json({ error: 'Database unavailable' });
   }
 });
+
+// apiLimiter needs a DB connection (it stores counters in Mongo), so it
+// runs after the connectDB middleware above rather than before routing.
+app.use(apiLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRoutes);
