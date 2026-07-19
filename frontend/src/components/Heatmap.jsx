@@ -1,4 +1,4 @@
-import { cloneElement, memo, useEffect, useEffectEvent, useMemo, useRef } from 'react';
+import { cloneElement, memo, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import { useTheme } from '../hooks/ThemeContext';
 import { useHoverCapable } from '../hooks/useHoverCapable';
@@ -21,6 +21,20 @@ function monthOf(dateStr) {
   return Number(dateStr.slice(5, 7)) - 1;
 }
 
+// Parsed as UTC, same as every other date-string read in this app (see
+// utils/streaks.js) - a plain `new Date('YYYY-MM-DD')` would otherwise be
+// fine here too (date-only ISO strings are already UTC-parsed per spec),
+// but being explicit keeps this consistent with the rest of the codebase.
+function formatTooltipDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 function getDayIndex(dateStr, year) {
   if (!dateStr) return 0;
   const date = new Date(dateStr + 'T00:00:00');
@@ -33,18 +47,28 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
   const max = useMemo(() => Math.max(1, ...values.map((v) => v.count)), [values]);
   const { theme } = useTheme();
   const containerRef = useRef(null);
-  // Mouse-driven devices get hover-to-preview (matches how the month
-  // highlight and every other desktop affordance here works); touch
-  // devices get tap-to-select instead, since there's no hover state to
-  // read on a phone and a stray touchmove shouldn't be treated as a hover.
+  // Mouse-driven devices only - a touch device has no hover state to read,
+  // and synthetic mouseover events some browsers fire right after a tap
+  // would otherwise leave a tooltip stuck open until the next tap
+  // elsewhere.
   const hoverCapable = useHoverCapable();
+  const [tooltip, setTooltip] = useState(null); // { x, y, date, count } | null
+
+  // Click/tap always selects a day (opens the detail panel below the
+  // grid) regardless of device. Hover additionally shows a lightweight
+  // tooltip on mouse-driven devices - a preview, not a replacement for the
+  // click-to-select detail panel, so it never calls onDayClick itself.
+  const interactionProps = {
+    onClick: (value) => value && onDayClick?.(value),
+    ...(hoverCapable && {
+      onMouseOver: (event, value) =>
+        value && setTooltip({ x: event.clientX, y: event.clientY, date: value.date, count: value.count }),
+      onMouseLeave: () => setTooltip(null),
+    }),
+  };
 
   // Detect if light mode is currently active
   const isLight = theme === 'light' || (theme === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-  const interactionProps = hoverCapable
-    ? { onMouseOver: (_event, value) => value && onDayClick?.(value) }
-    : { onClick: (value) => value && onDayClick?.(value) };
 
   // react-calendar-heatmap renders its own month labels (correctly spaced
   // proportional to each month's actual week-columns - Feb is narrower than
@@ -213,6 +237,15 @@ function Heatmap({ values, color = '#39d353', onDayClick, startDate, endDate, hi
           }}
         />
       </div>
+
+      {tooltip && (
+        <div className="heatmap-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+          <span className="heatmap-tooltip-count">
+            {tooltip.count || 0} {tooltip.count === 1 ? 'activity' : 'activities'}
+          </span>
+          <span className="heatmap-tooltip-date">{formatTooltipDate(tooltip.date)}</span>
+        </div>
+      )}
     </div>
   );
 }

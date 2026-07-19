@@ -4,6 +4,7 @@ const { fetchGithubActivity } = require('../connectors/github');
 const { fetchCodeforcesActivity } = require('../connectors/codeforces');
 const { fetchLeetcodeActivity } = require('../connectors/leetcode');
 const { decrypt } = require('../utils/crypto');
+const { computeLeaderboardStats } = require('../utils/leaderboardStats');
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 const LOCK_TTL_MS = 60 * 1000;
@@ -106,6 +107,17 @@ async function doSync(user) {
   // silently delaying the next retry.
   if (anySucceeded) {
     user.lastSyncedAt = new Date();
+    // Same guard as lastSyncedAt above, and for the same reason: a sync
+    // where every platform failed shouldn't zero out someone's leaderboard
+    // position with stats computed from stale/incomplete data (PLAN.md
+    // §2.5). Recomputed from DailyActivity rather than derived from
+    // `results` above so this reflects everything on record for the user,
+    // not just what this particular sync happened to touch.
+    const stats = await computeLeaderboardStats(user._id).catch((err) => {
+      console.error(`[sync] leaderboard stats computation failed for ${user.githubUsername}:`, err.message);
+      return null;
+    });
+    if (stats) Object.assign(user, stats);
     await user.save();
   }
 }

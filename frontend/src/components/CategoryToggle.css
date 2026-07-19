@@ -1,0 +1,91 @@
+.category-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 2px;
+  margin-bottom: var(--space-xl);
+  max-width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+}
+
+.category-toggle-slider {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  background: var(--surface-card);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), width 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
+}
+
+:root:not([data-theme="dark"]) .category-toggle-slider {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="dark"] .category-toggle-slider {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.category-toggle-btn {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: transparent;
+  color: var(--text-mute);
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 0 16px;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: color 200ms var(--ease-out), transform 150ms var(--ease-out);
+}
+
+.category-toggle-btn .toggle-label-short {
+  display: none;
+}
+
+.category-toggle-btn:hover {
+  color: var(--ink);
+}
+
+.category-toggle-btn:active {
+  transform: scale(0.98);
+}
+
+.category-toggle-btn.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .category-toggle {
+    width: 100%;
+    display: flex;
+    align-self: stretch;
+  }
+  .category-toggle-btn {
+    flex: 1;
+    padding: 0 4px;
+  }
+  .category-toggle-btn .toggle-label {
+    display: none;
+  }
+  .category-toggle-btn .toggle-label-short {
+    display: inline;
+  }
+}

@@ -10,6 +10,7 @@ const { connectDB } = require('./config/db');
 const { apiLimiter } = require('./middleware/rateLimit');
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profiles');
+const leaderboardRoutes = require('./routes/leaderboard');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,7 @@ app.use(async (req, res, next) => {
     await connectDB();
     next();
   } catch (err) {
+    console.log(err)
     res.status(503).json({ error: 'Database unavailable' });
   }
 });
@@ -37,6 +39,7 @@ app.use(apiLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // Global error handler — keeps stack traces out of responses.
 // Express 5 forwards async rejections here automatically.

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import './PlatformToggle.css';
 
 const OPTIONS = [
@@ -51,13 +52,50 @@ const OPTIONS = [
 ];
 
 export default function PlatformToggle({ value, onChange }) {
-  const activeIndex = OPTIONS.findIndex((option) => option.value === value);
+  const containerRef = useRef(null);
+  const [sliderStyle, setSliderStyle] = useState({ left: '0px', width: '0px', opacity: 0 });
+
+  useEffect(() => {
+    const measure = () => {
+      if (!containerRef.current) return;
+      const container = containerRef.current;
+      const activeButton = container.querySelector('.platform-toggle-btn.active');
+      if (activeButton) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeButton.getBoundingClientRect();
+        setSliderStyle({
+          left: `${activeRect.left - containerRect.left}px`,
+          width: `${activeRect.width}px`,
+          opacity: 1,
+        });
+      }
+    };
+
+    measure();
+
+    const resizeObserver = new ResizeObserver(() => {
+      measure();
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', measure);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [value]);
 
   return (
-    <div className="platform-toggle">
+    <div className="platform-toggle" ref={containerRef}>
       <div
         className="platform-toggle-slider"
-        style={{ transform: `translateX(${activeIndex * 100}%)` }}
+        style={{
+          width: sliderStyle.width,
+          transform: `translateX(${sliderStyle.left})`,
+          opacity: sliderStyle.opacity,
+        }}
       />
       {OPTIONS.map((option) => (
         <button

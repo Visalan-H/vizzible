@@ -2,6 +2,7 @@ const axios = require('axios');
 const { RAMPS } = require('./colorRamp');
 const { buildOGImageElement, getImageResponseCtor } = require('./render');
 const { computeStreaks } = require('../../utils/streaks');
+const { buildActivityByDate } = require('../../utils/activityByDate');
 
 function tierIndex(total, gridMax) {
   const ratio = total / gridMax;
@@ -31,19 +32,7 @@ async function fetchAvatarDataUrl(githubUsername) {
 // the caller (profileController) - this stays focused on turning that data
 // into an image rather than also owning the DB query.
 async function renderProfileOGImage(user, rows) {
-  const byDate = new Map();
-  let totalSubmissions = 0;
-  for (const row of rows) {
-    const counts = row.counts instanceof Map ? row.counts : new Map(Object.entries(row.counts || {}));
-    for (const [monthDay, count] of counts) {
-      const date = `${row.year}-${monthDay}`;
-      const entry = byDate.get(date) ?? { github: 0, codeforces: 0, leetcode: 0, total: 0 };
-      entry[row.platform] = (entry[row.platform] || 0) + count;
-      entry.total = entry.github + entry.codeforces + entry.leetcode;
-      byDate.set(date, entry);
-      totalSubmissions += count;
-    }
-  }
+  const { byDate, totalSubmissions } = buildActivityByDate(rows);
 
   // byDate can contain entries for days with zero total activity (a day
   // where every platform reported 0 that day still gets a map entry - see

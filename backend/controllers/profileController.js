@@ -63,6 +63,7 @@ const profileUpdateSchema = z.object({
   tagline: z.string().trim().max(120).nullable(),
   bio: z.string().trim().max(500).nullable(),
   links: z.array(linkSchema).max(10),
+  showOnLeaderboard: z.boolean(),
 });
 
 function publicFields(user) {
@@ -73,6 +74,7 @@ function publicFields(user) {
     tagline: user.tagline,
     bio: user.bio,
     links: user.links,
+    showOnLeaderboard: user.showOnLeaderboard,
   };
 }
 

@@ -3,40 +3,22 @@ import { useParams } from 'react-router-dom';
 import client from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
-import { useHoverCapable } from '../hooks/useHoverCapable';
 import PlatformToggle from '../components/PlatformToggle';
 import YearSelector from '../components/YearSelector';
 import ActivityBoard from '../components/ActivityBoard';
 import StreakCard from '../components/StreakCard';
 import PlatformLegend from '../components/PlatformLegend';
 import ShareButton from '../components/ShareButton';
+import CompareButton from '../components/CompareButton';
 import ProfileLinks, { ICON_MAP } from '../components/ProfileLinks';
 import { computeStreaks } from '../utils/streaks';
+import { buildDenseValues } from '../utils/activity';
 import { PLATFORM_COLORS, PLATFORM_KEY } from '../utils/platformColors';
 import CountUp from '../components/CountUp';
 import './Profile.css';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_LINKS = 10;
-
-// The backend only stores rows for days that had activity. Filling in
-// every day of Jan 1 - Dec 31 for the selected year (even for the current,
-// still-in-progress year - future days just render empty) means every
-// cell is clickable, the grid shape is consistent across years, and
-// month-highlighting/stats have a full, evenly-spaced year to work with.
-function buildDenseValues(activity, platformKey, year) {
-  const byDate = new Map(activity.map((day) => [day.date, day]));
-  const start = new Date(Date.UTC(year, 0, 1));
-  const end = new Date(Date.UTC(year, 11, 31));
-
-  const days = [];
-  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-    const date = d.toISOString().slice(0, 10);
-    const day = byDate.get(date) ?? { date, github: 0, codeforces: 0, leetcode: 0, total: 0 };
-    days.push({ ...day, count: day[platformKey] });
-  }
-  return days;
-}
 
 function EyeIcon() {
   return (
@@ -91,7 +73,6 @@ export default function Profile() {
   const { username } = useParams();
   const { user: currentUser } = useAuth();
   const { profile, activity, loading, notFound, setProfile, fetchActivity } = useProfile(username);
-  const hoverCapable = useHoverCapable();
   const [platform, setPlatform] = useState('combined');
   const [year, setYear] = useState(CURRENT_YEAR);
   const [editing, setEditing] = useState(false);
@@ -262,6 +243,7 @@ export default function Profile() {
         </div>
         <div className="profile-header-actions">
           <ShareButton url={profileUrl} title={`${profile.githubUsername} — Vizzible`} text={shareText} />
+          <CompareButton username={profile.githubUsername} />
           {isOwnProfile && !showForm && (
             <button type="button" className="btn-secondary edit-profile-btn" onClick={() => setEditing(true)}>
               <EditIcon />
@@ -342,7 +324,7 @@ export default function Profile() {
           <CountUp value={total} /> activity {total === 1 ? 'point' : 'points'} in {year}
         </p>
         <p className="activity-hint">
-          Click a month label to see stats · {hoverCapable ? 'hover' : 'tap'} a day for details
+          Click a month label to see stats · click a day for details
         </p>
       </div>
 
@@ -392,6 +374,9 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
   const [links, setLinks] = useState(() =>
     withKeys(profile.links?.length ? profile.links : [{ label: '', url: '', icon: 'generic' }])
   );
+  // Defaults true to match the backend's own default (PLAN.md §2.4) for a
+  // profile that predates this field and hasn't been saved since.
+  const [showOnLeaderboard, setShowOnLeaderboard] = useState(profile.showOnLeaderboard ?? true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // 'saved' | 'error' | null
 
@@ -436,6 +421,7 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
         tagline: tagline.trim() || null,
         bio: bio.trim() || null,
         links: cleanedLinks,
+        showOnLeaderboard,
       })
       .then((res) => {
         setStatus(handlesChanged ? 'saved-resync' : 'saved');
@@ -553,6 +539,17 @@ function EditProfileForm({ profile, onboarding, onSaved, onCancel }) {
             </button>
           )}
         </div>
+      </div>
+
+      <div className="field-group leaderboard-toggle-row">
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={showOnLeaderboard}
+            onChange={(e) => setShowOnLeaderboard(e.target.checked)}
+          />
+          <span>Show me on the leaderboard</span>
+        </label>
       </div>
 
       <div className="form-actions">

@@ -22,6 +22,9 @@ export default function Navbar() {
       </Link>
 
       <div className="nav-user">
+        <Link to="/explore" className="btn-ghost nav-explore-link">
+          Explore
+        </Link>
         <button type="button" className="btn-ghost theme-toggle-btn" onClick={toggleTheme} title="Toggle Theme">
           {theme === 'dark' ? (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>

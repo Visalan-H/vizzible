@@ -295,6 +295,24 @@
   color: var(--danger);
 }
 
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 13px;
+  color: var(--text-body);
+  cursor: pointer;
+  width: fit-content;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ink);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .syncing-banner {
   background-color: var(--bg-card);
   border: 1px solid var(--border);
